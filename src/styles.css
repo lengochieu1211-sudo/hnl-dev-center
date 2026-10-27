@@ -10,3 +10,29 @@
 .web-preview-fallback a{color:#b2fff0;text-decoration:underline;font-weight:800;white-space:nowrap;}
 .preview-url-row a#open-web-external{padding:11px 15px;border-radius:9px;background:#dcf7ee;border:1px solid #a4daca;font-weight:800;color:#086657;}
 @media(max-width:650px){.preview-url-row input,.preview-url-row button,.preview-url-row a#open-web-external{width:100%;min-width:0;} .web-preview-fallback{font-size:10px;padding:7px 6px;}}
+
+/* v0.3.2: put the real preview controls first and make the reliable external link prominent. */
+.preview-url-row .primary-button{display:inline-flex;min-height:44px;text-align:center;}
+.preview-url-row .primary-button[hidden]{display:none!important;}
+.preview-url-status{font-size:11px;color:#557086;flex-basis:100%;line-height:1.5;}
+#page-preview .real-preview-panel{margin-top:0;margin-bottom:16px;}
+#page-preview .preview-stage{scroll-margin-top:20px;}
+@media(max-width:650px){.preview-url-row a#open-web-external{display:flex;width:100%;font-size:13px}.preview-url-row{gap:12px}}
+
+/* v0.3.3 — QLTC environment boundaries are explicit; PROD is read-only. */
+.environment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:8px 0 28px;}
+.environment-card{background:var(--white,#fff);border:1px solid #dce5ed;border-radius:13px;padding:16px;min-width:0;box-shadow:0 4px 18px #14324d09}
+.env-prod{border-color:#e3bcc0;background:#fffafa}
+.env-header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.env-header h3{margin:0;font-size:15px}
+.env-chip{font-size:10px;letter-spacing:.03em;background:#ecf2f8;border-radius:999px;padding:4px 8px;font-weight:700}
+.env-prod .env-chip{background:#fce5e7;color:#9c2a36}
+.environment-card p{font-size:12px;line-height:1.55;overflow-wrap:anywhere;color:#4e647b}
+.environment-card .env-head{font-weight:700;color:#23445b}
+.environment-card .env-caution{margin-bottom:13px}
+.env-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.env-actions a{display:inline-flex;font-size:12px;font-weight:700;color:#006f8c;text-decoration:none;min-height:36px;align-items:center}
+.env-actions button{min-height:34px;font-size:12px;padding:5px 8px}
+.preview-env-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.task-env-group[hidden],.preview-env-group[hidden]{display:none!important}
+@media(max-width:900px){.environment-grid{grid-template-columns:1fr}}

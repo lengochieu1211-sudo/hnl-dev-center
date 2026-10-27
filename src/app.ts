@@ -7,6 +7,17 @@ const projects: ProjectInfo[] = [
   { id: 'hcf', name: 'HCF · Ceiling Framing Pro', shortName: 'HCF', subtitle: 'AutoCAD · Windows', repo: 'lengochieu1211-sudo/hnl-cad-ai', branch: 'research/vxt-pro-v7-bootstrap', baseline: '83582296127306d846571010a43eb8e94edbedd1', description: 'XC / XP / Ty / MEP / DIM / Preview' },
   { id: 'hce', name: 'HCE · Ceiling Estimator Pro', shortName: 'HCE', subtitle: 'AutoCAD · Windows', repo: 'lengochieu1211-sudo/hnl-cad-ai', branch: 'research/hce-pro-bootstrap', baseline: 'a45fe6dcf9fca2172fed3a93ac14e6cf4f4f8ae8', description: 'Hatch / vật tư / tấm / bảng thống kê' }
 ];
+type QltcEnvId = 'prod' | 'dev' | 'dev-backup';
+type QltcEnvironment = { id: QltcEnvId; label: string; branch: string | null; firebaseProject: string | null; hostingSite: string; webUrl: string; caution: string };
+// Public identifiers only. No credentials, production API or privileged Firebase connection.
+// DEV BACKUP is a Hosting site, NOT an assumed Git branch or a verified copy of DEV HEAD.
+const qltcEnvironments: readonly QltcEnvironment[] = [
+  { id:'prod',label:'PROD',branch:'main',firebaseProject:'com-example-qlct-61329',hostingSite:'hnlqltc',webUrl:'https://hnlqltc.web.app/',caution:'Hệ thống thật — chỉ đọc, không test dữ liệu, không nhúng.' },
+  { id:'dev',label:'DEV',branch:'dev',firebaseProject:'hnl-qltc-dev',hostingSite:'hnl-qltc-dev',webUrl:'https://hnl-qltc-dev.web.app/',caution:'Chỉ sửa/test DEV theo quy trình phê duyệt riêng.' },
+  { id:'dev-backup',label:'DEV BACKUP',branch:null,firebaseProject:null,hostingSite:'hnl-qltc-dev-backup',webUrl:'https://hnl-qltc-dev-backup.web.app/',caution:'Hosting site dự phòng — HEAD bản triển khai và truy cập Web chưa được xác minh.' }
+];
+function isQltcEnv(v:unknown): v is QltcEnvId { return v==='prod'||v==='dev'||v==='dev-backup'; }
+const qltcVerifiedHeads: Partial<Record<'prod'|'dev',string>> = {};
 const labels: Record<PageId, string> = { dashboard: 'Tổng quan', tasks: 'Hồ sơ công việc', preview: 'Preview Studio', safety: 'Kiểm soát an toàn', ci: 'GitHub Actions / CI', backup: 'Sao lưu hồ sơ' };
 const safetySteps: { name: string; detail: string }[] = [
   { name: 'Xác minh đúng HEAD', detail: 'Đọc trực tiếp GitHub, chốt branch và mã commit trước mọi thay đổi.' },
@@ -17,7 +28,7 @@ const safetySteps: { name: string; detail: string }[] = [
   { name: 'Sao lưu và phê duyệt', detail: 'PATCH, FULL SOURCE, REPORT, SHA256 lên Drive; không Push/Deploy khi chưa được duyệt.' }
 ];
 type TaskStatus = 'Mới tạo' | 'Đang audit' | 'Chờ kiểm thử' | 'Chờ phê duyệt' | 'Hoàn thành (tự ghi nhận)';
-type LocalTask = { id: string; project: ProjectId; title: string; details: string; risk: string; status: TaskStatus; createdAt: string; updatedAt: string; headAtCreation: string | null };
+type LocalTask = { id: string; project: ProjectId; environment?: QltcEnvId; title: string; details: string; risk: string; status: TaskStatus; createdAt: string; updatedAt: string; headAtCreation: string | null };
 type WorkflowRun = { id: number; name: string; head_sha: string; status: string; conclusion: string | null; html_url: string; created_at: string };
 const taskStatuses: TaskStatus[] = ['Mới tạo', 'Đang audit', 'Chờ kiểm thử', 'Chờ phê duyệt', 'Hoàn thành (tự ghi nhận)'];
 const taskKey = 'hnl-dev-center:v0.2:tasks';
@@ -29,8 +40,8 @@ function isProject(v: unknown): v is ProjectId { return v === 'qltc' || v === 'h
 function parseTask(v: unknown): LocalTask | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
   const t = v as Record<string,unknown>;
-  if (typeof t.id !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(t.id) || !isProject(t.project) || typeof t.title !== 'string' || t.title.length > 160 || !t.title.trim() || typeof t.details !== 'string' || t.details.length > 20000 || typeof t.risk !== 'string' || t.risk.length > 150 || !taskStatuses.includes(t.status as TaskStatus) || typeof t.createdAt !== 'string' || typeof t.updatedAt !== 'string' || !Number.isFinite(Date.parse(t.createdAt)) || !Number.isFinite(Date.parse(t.updatedAt)) || !(t.headAtCreation === null || (typeof t.headAtCreation === 'string' && /^[a-f\d]{40}$/.test(t.headAtCreation)))) return null;
-  return { id: t.id, project:t.project, title:t.title.trim(), details:t.details, risk:t.risk, status:t.status as TaskStatus, createdAt:t.createdAt, updatedAt:t.updatedAt, headAtCreation:t.headAtCreation as string | null };
+  if (typeof t.id !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(t.id) || !isProject(t.project) || !(t.environment === undefined || isQltcEnv(t.environment)) || typeof t.title !== 'string' || t.title.length > 160 || !t.title.trim() || typeof t.details !== 'string' || t.details.length > 20000 || typeof t.risk !== 'string' || t.risk.length > 150 || !taskStatuses.includes(t.status as TaskStatus) || typeof t.createdAt !== 'string' || typeof t.updatedAt !== 'string' || !Number.isFinite(Date.parse(t.createdAt)) || !Number.isFinite(Date.parse(t.updatedAt)) || !(t.headAtCreation === null || (typeof t.headAtCreation === 'string' && /^[a-f\d]{40}$/.test(t.headAtCreation)))) return null;
+  return { id: t.id, project:t.project, environment:isQltcEnv(t.environment)?t.environment:undefined, title:t.title.trim(), details:t.details, risk:t.risk, status:t.status as TaskStatus, createdAt:t.createdAt, updatedAt:t.updatedAt, headAtCreation:t.headAtCreation as string | null };
 }
 function readTasks(): LocalTask[] {
   try {
@@ -61,6 +72,67 @@ function projectCard(project: ProjectInfo): HTMLElement {
   const link = document.createElement('a'); link.className = 'repo-link'; link.href = `https://github.com/${project.repo}/tree/${project.branch}`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Xem nhánh trên GitHub ↗';
   card.append(head, branch, shaLine, status, link); return card;
 }
+function qltcEnvironment(id: QltcEnvId):QltcEnvironment { return qltcEnvironments.find(e=>e.id===id)!; }
+function taskEnv():QltcEnvId{return el<HTMLSelectElement>('task-environment').value as QltcEnvId;}
+function setTaskEnvironmentVisibility():void{
+  el<HTMLElement>('task-env-group').hidden=el<HTMLSelectElement>('task-project').value!=='qltc';
+}
+function renderQltcEnvironments():void{
+  const holder=el<HTMLElement>('qltc-environments');holder.replaceChildren();
+  for(const env of qltcEnvironments){
+    const card=document.createElement('article');card.className=`environment-card ${env.id==='prod'?'env-prod':''}`;
+    const header=document.createElement('div');header.className='env-header';
+    const title=document.createElement('h3');title.textContent=`QLTC ${env.label}`;
+    const badge=document.createElement('span');badge.className='env-chip';badge.textContent=env.id==='prod'?'KHÓA GHI':env.id==='dev'?'MÔI TRƯỜNG THỬ':'BACKUP — CHƯA XÁC MINH';
+    header.append(title,badge);
+    const project=document.createElement('p');project.textContent=`Firebase: ${env.firebaseProject ?? 'Chưa xác minh'} · Hosting: ${env.hostingSite}`;
+    const sha=document.createElement('p');sha.className='env-head';sha.id=`qltc-env-head-${env.id}`;
+    sha.textContent=env.branch?`GitHub ${env.branch}: chờ xác minh HEAD`: 'Không gán HEAD nhánh dev cho Hosting Backup';
+    const caution=document.createElement('p');caution.className='env-caution';caution.textContent=env.caution;
+    const actions=document.createElement('div');actions.className='env-actions';
+    const external=document.createElement('a');external.href=env.webUrl;external.target='_blank';external.rel='noopener noreferrer';
+    external.textContent=env.id==='prod'?'Mở PROD (chỉ xem) ↗':'Mở Web (kiểm tra) ↗';
+    actions.append(external);
+    if(env.id!=='prod'){
+      const preview=document.createElement('button');preview.type='button';preview.className='secondary-button';preview.textContent='Chọn trong Preview';
+      preview.addEventListener('click',()=>{
+        el<HTMLSelectElement>('preview-app').value='qltc';
+        el<HTMLSelectElement>('preview-environment').value=env.id;
+        syncQltcPreview();
+        document.querySelector<HTMLInputElement>('input[name="preview-mode"][value="web"]')!.checked=true;
+        changePreviewMode('web');navigate('preview');
+      });actions.append(preview);
+    }
+    card.append(header,project,sha,caution,actions);holder.append(card);
+  }
+}
+async function updateQltcProdHead():Promise<void>{
+  const env=qltcEnvironment('prod');const node=el<HTMLElement>('qltc-env-head-prod');
+  try{
+    const url=`https://api.github.com/repos/lengochieu1211-sudo/hnl-qltc/git/ref/heads/${env.branch}`;
+    const response=await fetch(url,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const ref=await response.json() as {ref?:unknown;object?:{sha?:unknown}};
+    if(ref.ref!=='refs/heads/main'||typeof ref.object?.sha!=='string'||!/^[a-f\d]{40}$/.test(ref.object.sha))throw Error('GitHub ref không hợp lệ');
+    qltcVerifiedHeads.prod=ref.object.sha;node.textContent=`GitHub main HEAD: ${ref.object.sha.slice(0,12)} (chỉ đọc)`;
+  }catch{node.textContent='GitHub main HEAD: chưa xác minh trực tiếp';}
+}
+function syncQltcPreview():void{
+  const isQltc=el<HTMLSelectElement>('preview-app').value==='qltc';
+  el<HTMLElement>('preview-env-group').hidden=!isQltc;
+  if(!isQltc){
+    el<HTMLButtonElement>('load-web-preview').disabled=false;
+    const input=el<HTMLInputElement>('preview-url');
+    if(qltcEnvironments.some(e=>e.webUrl===input.value))input.value='';
+    updateWebPreviewLink();
+    return;
+  }
+  const env=qltcEnvironment(el<HTMLSelectElement>('preview-environment').value as QltcEnvId);
+  el<HTMLInputElement>('preview-url').value=env.webUrl;
+  updateWebPreviewLink();
+  el<HTMLButtonElement>('load-web-preview').disabled=env.id==='prod';
+  el<HTMLElement>('preview-url-status').textContent=env.id==='prod'?'PROD CHỈ ĐƯỢC MỞ TAB RIÊNG — không nhúng, không thao tác thử.':env.id==='dev-backup'?'Địa chỉ Hosting DEV BACKUP là tham chiếu; chưa xác minh bản phát hành/HEAD.':'DEV: mở tab riêng để kiểm tra login, hoặc thử nhúng khi cần bố cục.';
+}
 async function updateBranches(): Promise<void> {
   const button = el<HTMLButtonElement>('refresh-repos'); button.disabled = true; button.textContent = 'Đang đọc GitHub…';
   let okCount=0;
@@ -83,9 +155,11 @@ async function updateBranches(): Promise<void> {
   el<HTMLElement>('refresh-stamp').textContent=`${okCount}/3 nhánh xác minh trực tiếp`;
   button.disabled=false;button.textContent='↻ Cập nhật GitHub';
   showToast(okCount===3?'Đã cập nhật chính xác 3 HEAD từ GitHub.':'Có nhánh không xác minh được. Không sửa source theo mốc tham khảo.');
+  const devEnvHead=el<HTMLElement>('qltc-env-head-dev');devEnvHead.textContent=verifiedHeads.qltc?`GitHub dev HEAD: ${verifiedHeads.qltc.slice(0,12)}`:'GitHub dev HEAD: chưa xác minh trực tiếp';
+  void updateQltcProdHead();
 }
-function handoffText(project: ProjectInfo, title: string, details: string, risk: string, headOverride?: string|null): string {
-  return `HNL DEV CENTER — HỒ SƠ BÀN GIAO\n\nỨng dụng: ${project.name}\nRepository: ${project.repo}\nBranch: ${project.branch}\nHEAD đã đọc trong phiên (cần xác minh lại trước khi sửa): ${headOverride ?? verifiedHeads[project.id] ?? 'CHƯA XÁC MINH — KHÔNG ĐƯỢC SỬA SOURCE DỰA TRÊN HEAD CŨ'}\nLoại công việc: ${risk}\nYêu cầu: ${title}\n\nMÔ TẢ\n${details.trim() || '(Chưa có mô tả chi tiết)'}\n\nQUY TRÌNH BẮT BUỘC\n1. Kiểm tra lại đúng HEAD hiện tại trên GitHub và checkpoint gần nhất. Không rollback.\n2. Audit nguyên nhân gốc và các phần liên quan trước khi chỉnh.\n3. Trình bày hiện trạng, nguyên nhân, đề xuất, file ảnh hưởng và rủi ro; patch tối thiểu.\n4. Chỉ kiểm thử trong DEV/workspace an toàn; không đổi Firebase/R2/GitHub/domain.\n5. Chạy typecheck/lint/build, regression, Rules (nếu liên quan), Runtime Golden thực tế khi cần.\n6. Báo thay đổi, kết quả test, rủi ro; đóng gói PATCH + FULL SOURCE + REPORT + SHA256 theo đúng HEAD; lưu Drive khi có quyền.\n7. KHÔNG Push, Merge, Deploy PROD hoặc thay đổi dữ liệu thật khi chưa được phê duyệt.\n\nLƯU Ý: Đây là văn bản để sao chép; không tự đồng bộ chat giữa các nhà cung cấp AI.`;
+function handoffText(project: ProjectInfo, title: string, details: string, risk: string, headOverride?: string|null, environment:QltcEnvId='dev'): string {
+  return `HNL DEV CENTER — HỒ SƠ BÀN GIAO\n\nỨng dụng: ${project.name}\n${project.id==='qltc'?`Môi trường: QLTC ${qltcEnvironment(environment).label}\nFirebase: ${qltcEnvironment(environment).firebaseProject??'Chưa xác minh'}\nChính sách: ${qltcEnvironment(environment).caution}\n${environment!=='dev'?'CHÚ Ý: Không được lấy HEAD DEV làm bằng chứng source đang triển khai trên môi trường này.\n':''}`:''}Repository: ${project.repo}\nBranch: ${project.branch}\nHEAD tham chiếu phát triển (phải xác minh lại, KHÔNG phải HEAD Hosting): ${headOverride ?? verifiedHeads[project.id] ?? 'CHƯA XÁC MINH — KHÔNG ĐƯỢC SỬA SOURCE DỰA TRÊN HEAD CŨ'}\nLoại công việc: ${risk}\nYêu cầu: ${title}\n\nMÔ TẢ\n${details.trim() || '(Chưa có mô tả chi tiết)'}\n\nQUY TRÌNH BẮT BUỘC\n1. Kiểm tra lại đúng HEAD hiện tại trên GitHub và checkpoint gần nhất. Không rollback.\n2. Audit nguyên nhân gốc và các phần liên quan trước khi chỉnh.\n3. Trình bày hiện trạng, nguyên nhân, đề xuất, file ảnh hưởng và rủi ro; patch tối thiểu.\n4. Chỉ kiểm thử trong DEV/workspace an toàn; không đổi Firebase/R2/GitHub/domain.\n5. Chạy typecheck/lint/build, regression, Rules (nếu liên quan), Runtime Golden thực tế khi cần.\n6. Báo thay đổi, kết quả test, rủi ro; đóng gói PATCH + FULL SOURCE + REPORT + SHA256 theo đúng HEAD; lưu Drive khi có quyền.\n7. KHÔNG Push, Merge, Deploy PROD hoặc thay đổi dữ liệu thật khi chưa được phê duyệt.\n\nLƯU Ý: Đây là văn bản để sao chép; không tự đồng bộ chat giữa các nhà cung cấp AI.`;
 }
 function setPreview(): void {
   const mode=document.querySelector<HTMLInputElement>('input[name="preview-mode"]:checked')?.value;
@@ -120,7 +194,7 @@ function renderTasks(): void {
   for (const t of filtered) {
     const box=document.createElement('article'); box.className='task-row';
     const body=document.createElement('div'); const project=projects.find(p=>p.id===t.project)!;
-    const meta=document.createElement('div'); meta.className='task-small'; meta.textContent=`${project.shortName} · ${t.risk} · ${new Date(t.updatedAt).toLocaleString('vi-VN')}`;
+    const meta=document.createElement('div'); meta.className='task-small'; meta.textContent=`${project.shortName}${project.id==='qltc'?' / '+qltcEnvironment(t.environment??'dev').label:''} · ${t.risk} · ${new Date(t.updatedAt).toLocaleString('vi-VN')}`;
     const title=document.createElement('h3'); title.textContent=t.title;
     const hash=document.createElement('p'); hash.textContent=`HEAD lúc tạo: ${t.headAtCreation ? t.headAtCreation.slice(0,12) : 'Chưa xác minh'} · ID ${t.id.slice(0,8)}`;
     body.append(meta,title,hash);
@@ -130,8 +204,8 @@ function renderTasks(): void {
     status.value=t.status;
     status.addEventListener('change',()=>{const updated=tasks.map(x=>x.id===t.id?{...x,status:status.value as TaskStatus,updatedAt:new Date().toISOString()}:x);if(!persistTasks(updated))status.value=t.status;});
     const handoff=document.createElement('button'); handoff.type='button'; handoff.textContent='Lấy hồ sơ';
-    handoff.addEventListener('click',()=>{ el<HTMLSelectElement>('task-project').value=t.project;el<HTMLInputElement>('task-title').value=t.title;el<HTMLTextAreaElement>('task-details').value=t.details;el<HTMLSelectElement>('task-risk').value=t.risk;
-      el<HTMLTextAreaElement>('handoff-output').value=handoffText(project,t.title,t.details,t.risk,t.headAtCreation);navigate('tasks');showToast('Đã lấy hồ sơ. Sao chép để gửi AI; phải xác minh lại HEAD.');});
+    handoff.addEventListener('click',()=>{ el<HTMLSelectElement>('task-project').value=t.project;el<HTMLSelectElement>('task-environment').value=t.environment??'dev';setTaskEnvironmentVisibility();el<HTMLInputElement>('task-title').value=t.title;el<HTMLTextAreaElement>('task-details').value=t.details;el<HTMLSelectElement>('task-risk').value=t.risk;
+      el<HTMLTextAreaElement>('handoff-output').value=handoffText(project,t.title,t.details,t.risk,t.headAtCreation,t.environment??'dev');navigate('tasks');showToast('Đã lấy hồ sơ. Sao chép để gửi AI; phải xác minh lại HEAD.');});
     const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Xóa';
     del.addEventListener('click',()=>{ if(!window.confirm(`Xóa hồ sơ cục bộ “${t.title}”? Hãy xuất backup trước nếu cần giữ.`))return; persistTasks(tasks.filter(x=>x.id!==t.id)); });
     actions.append(status,handoff,del);box.append(body,actions);list.append(box);
@@ -208,16 +282,26 @@ async function refreshCI():Promise<void> {
 function changePreviewMode(mode:string):void {
   const stage=document.querySelector<HTMLElement>('.preview-stage');if(!stage)return;
   el<HTMLElement>('web-preview-controls').hidden=mode!=='web';el<HTMLElement>('image-preview-controls').hidden=mode!=='images';
-  el<HTMLElement>('preview-message').textContent=mode==='web'?'Nhúng iframe chỉ là thử nghiệm. Nếu trắng hoặc yêu cầu đăng nhập, chọn “Mở Web thật ở tab mới”. Đây không phải Runtime Golden.':mode==='images'?'Ảnh được xử lý tạm trong trình duyệt, không tải lên máy chủ. Không phải Runtime Golden.':'Bản mô phỏng chỉ minh họa bố cục. Preview không xác nhận runtime thực tế.';
+  el<HTMLElement>('preview-message').textContent=mode==='web'?'Ưu tiên nút “Mở Web thật” để đăng nhập và thao tác trên thiết bị. Nút “Thử nhúng” chỉ dùng xem bố cục, có thể bị chặn. Đây không phải Runtime Golden.':mode==='images'?'Ảnh được xử lý tạm trong trình duyệt, không tải lên máy chủ. Không phải Runtime Golden.':'Bản mô phỏng chỉ minh họa bố cục. Preview không xác nhận runtime thực tế.';
   const frame=el<HTMLDivElement>('sim-device');
   if(mode==='simulation'){restoreSimulation();setPreview();}
-  else if(mode==='web'){frame.replaceChildren(); const tip=document.createElement('div');tip.className='app-notice-inline';tip.style.padding='20px';tip.textContent='Nhập URL Web DEV ở bên dưới để xem trước.';frame.append(tip);setPreview();}
+  else if(mode==='web'){frame.replaceChildren(); const tip=document.createElement('div');tip.className='app-notice-inline';tip.style.padding='20px';tip.textContent='Dán URL DEV ở mục phía trên và chạm “Mở Web thật” để sử dụng; nút Thử nhúng có thể không tải.';frame.append(tip);setPreview();}
   else {restoreSimulation();setPreview();renderImageComparison();}
 }
 const originalSimulation=el<HTMLDivElement>('sim-device').cloneNode(true) as HTMLDivElement;
 function restoreSimulation():void {const frame=el<HTMLDivElement>('sim-device');frame.replaceChildren(...Array.from(originalSimulation.cloneNode(true).childNodes));}
 function validatePreviewUrl(raw:string):string|null{
   try{const url=new URL(raw);const host=url.hostname.toLowerCase();if(url.protocol!=='https:'||url.username||url.password||url.port||!(/(^|\.)web\.app$|(^|\.)firebaseapp\.com$|(^|\.)vercel\.app$/.test(host)))return null;url.hash='';return url.toString();}catch{return null;}
+}
+function updateWebPreviewLink():void{
+  const input=el<HTMLInputElement>('preview-url');
+  const link=el<HTMLAnchorElement>('open-web-external');
+  const status=el<HTMLElement>('preview-url-status');
+  const url=validatePreviewUrl(input.value.trim());
+  // A real user click on the anchor opens the actual page (no popup script, iframe,
+  // third-party storage or sandbox restrictions). The validation also blocks js: URLs.
+  if(url){link.href=url;link.hidden=false;status.textContent='URL hợp lệ. Chạm “Mở Web thật” để mở trang với đầy đủ quyền đăng nhập.';}
+  else{link.removeAttribute('href');link.hidden=true;status.textContent=input.value.trim()?'URL không hợp lệ: chỉ nhận HTTPS web.app, firebaseapp.com hoặc vercel.app.':'Dán đúng URL Web DEV để bật nút mở.';}
 }
 function renderImageComparison():void{
   const mode=document.querySelector<HTMLInputElement>('input[name="preview-mode"]:checked')?.value;if(mode!=='images')return;
@@ -234,19 +318,23 @@ function loadScreenshot(which:'before'|'after',file:File|undefined):void{
 function main(): void {
   el<HTMLElement>('current-date').textContent = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' });
   const holder = el<HTMLElement>('projects'); projects.forEach(p => holder.append(projectCard(p)));
+  renderQltcEnvironments();
+  el<HTMLSelectElement>('task-project').addEventListener('change',setTaskEnvironmentVisibility);setTaskEnvironmentVisibility();
   document.querySelectorAll<HTMLButtonElement>('[data-page]').forEach(btn => btn.addEventListener('click', () => navigate(btn.dataset.page as PageId)));
   document.querySelectorAll<HTMLButtonElement>('[data-select-project]').forEach(btn => btn.addEventListener('click', () => { el<HTMLSelectElement>('task-project').value = btn.dataset.selectProject ?? 'qltc'; navigate('tasks'); }));
   el<HTMLButtonElement>('menu-toggle').addEventListener('click', () => el<HTMLElement>('sidebar').classList.toggle('open'));
   el<HTMLButtonElement>('refresh-repos').addEventListener('click', () => void updateBranches());
   el<HTMLButtonElement>('open-antigravity').addEventListener('click', () => { navigate('tasks'); showToast('Tạo hồ sơ, sao chép nội dung rồi dán vào Antigravity trên PC.'); });
   el<HTMLFormElement>('task-form').addEventListener('submit', ev => { ev.preventDefault(); const p = projects.find(x => x.id === el<HTMLSelectElement>('task-project').value) ?? projects[0]; const title = el<HTMLInputElement>('task-title').value.trim(); if (!title) return; const details=el<HTMLTextAreaElement>('task-details').value.slice(0,20000); const risk=el<HTMLSelectElement>('task-risk').value;
-    const item:LocalTask={id:crypto.randomUUID(),project:p.id,title,details,risk,status:'Mới tạo',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),headAtCreation:verifiedHeads[p.id]||null};
+    const item:LocalTask={id:crypto.randomUUID(),project:p.id,title,details,risk,status:'Mới tạo',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),headAtCreation:verifiedHeads[p.id]||null,environment:p.id==='qltc'?taskEnv():undefined};
     if(!persistTasks([...tasks,item]))return;
-    const content = handoffText(p, title, details, risk, item.headAtCreation); el<HTMLTextAreaElement>('handoff-output').value = content; showToast('Đã tạo hồ sơ và lưu cục bộ. Hãy sao chép để gửi AI.'); });
+    const content = handoffText(p, title, details, risk, item.headAtCreation, item.environment??'dev'); el<HTMLTextAreaElement>('handoff-output').value = content; showToast('Đã tạo hồ sơ và lưu cục bộ. Hãy sao chép để gửi AI.'); });
   el<HTMLButtonElement>('copy-handoff').addEventListener('click', async () => { const input = el<HTMLTextAreaElement>('handoff-output'); if (!input.value.trim()) return showToast('Hãy tạo hồ sơ trước.'); try { await navigator.clipboard.writeText(input.value); showToast('Đã sao chép hồ sơ.'); } catch { input.focus(); input.select(); showToast('Chọn Sao chép trên thiết bị để lấy nội dung đã bôi đen.'); } });
   el<HTMLButtonElement>('rotate-preview').addEventListener('click', ev => { const btn = ev.currentTarget as HTMLButtonElement; btn.dataset.rotated = btn.dataset.rotated === 'yes' ? 'no' : 'yes'; setPreview(); });
   el<HTMLSelectElement>('preview-device').addEventListener('change', () => { el<HTMLButtonElement>('rotate-preview').dataset.rotated = 'no'; setPreview(); });
-  el<HTMLSelectElement>('preview-app').addEventListener('change', setPreview);
+  el<HTMLSelectElement>('preview-app').addEventListener('change',()=>{syncQltcPreview();setPreview();});
+  el<HTMLSelectElement>('preview-environment').addEventListener('change',syncQltcPreview);
+  syncQltcPreview();
   window.addEventListener('resize', () => { if (el<HTMLElement>('page-preview').classList.contains('active')) setPreview(); });
   const list = el<HTMLElement>('safety-checklist'); safetySteps.forEach((step, i) => { const row = document.createElement('div'); row.className = 'safety-step'; const num = document.createElement('span'); num.textContent = String(i + 1); const content = document.createElement('div'); const name = document.createElement('strong'); name.textContent = step.name; const detail = document.createElement('p'); detail.textContent = step.detail; content.append(name, detail); row.append(num, content); list.append(row); });
   tasks=readTasks();renderTasks();
@@ -257,9 +345,12 @@ function main(): void {
   const grid=el<HTMLElement>('ci-grid');for(const project of projects){const card=document.createElement('article');card.className='ci-card';card.id=`ci-${project.id}`;grid.append(card);drawCI(project,null,'Chưa bấm Cập nhật CI');}
   el<HTMLButtonElement>('refresh-ci').addEventListener('click',()=>void refreshCI());
   document.querySelectorAll<HTMLInputElement>('input[name="preview-mode"]').forEach(x=>x.addEventListener('change',()=>changePreviewMode(x.value)));
+  el<HTMLInputElement>('preview-url').addEventListener('input',updateWebPreviewLink);
+  updateWebPreviewLink();
   el<HTMLButtonElement>('load-web-preview').addEventListener('click',()=>{
     const url=validatePreviewUrl(el<HTMLInputElement>('preview-url').value);
     if(!url){showToast('Chỉ chấp nhận URL HTTPS của web.app / firebaseapp.com / vercel.app.');return;}
+    if(new URL(url).hostname==='hnlqltc.web.app'||(el<HTMLSelectElement>('preview-app').value==='qltc'&&el<HTMLSelectElement>('preview-environment').value==='prod')){showToast('PROD chỉ được mở tab riêng, không nhúng.');return;}
     const frame=el<HTMLDivElement>('sim-device');frame.replaceChildren();
     const iframe=document.createElement('iframe');iframe.className='live-frame';
     // An opaque iframe origin protects HNL Dev data, but will restrict apps needing
@@ -271,13 +362,20 @@ function main(): void {
     const fallback=document.createElement('a');fallback.href=url;fallback.target='_blank';fallback.rel='noopener noreferrer';fallback.textContent='Mở tab mới ↗';
     bar.append(note,fallback);frame.append(iframe,bar);
     iframe.src=url;
-    const external=el<HTMLAnchorElement>('open-web-external');external.href=url;external.hidden=false;
+    updateWebPreviewLink();
     setPreview();
     showToast('Đã thử nhúng trang. Không thể xác nhận trạng thái Web đích từ iframe; hãy dùng tab mới nếu khung trắng.');
   });
   el<HTMLInputElement>('preview-before').addEventListener('change',e=>loadScreenshot('before',(e.currentTarget as HTMLInputElement).files?.[0]));
   el<HTMLInputElement>('preview-after').addEventListener('change',e=>loadScreenshot('after',(e.currentTarget as HTMLInputElement).files?.[0]));
-  setPreview(); void updateBranches();
+  setPreview();
+  const directPage=window.location.hash.slice(1) as PageId;
+  if(Object.prototype.hasOwnProperty.call(labels,directPage))navigate(directPage);
+  window.addEventListener('hashchange',()=>{
+    const page=window.location.hash.slice(1) as PageId;
+    if(Object.prototype.hasOwnProperty.call(labels,page))navigate(page);
+  });
+  void updateBranches();
   if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')) void navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 main();

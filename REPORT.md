@@ -1,53 +1,38 @@
-# HNL Dev v0.3.1 – Preview Studio Root Cause & Regression Report
+# HNL Dev v0.3.3 – Báo cáo môi trường QLTC và Preview Studio
+Ngày: 27/10/2026. Chỉ sửa HNL Dev Center, không sửa HNL QLTC/HCF/HCE.
 
-Date: 2026-10-27 (Asia/Ho_Chi_Minh)
-Source baseline: GitHub `lengochieu1211-sudo/hnl-dev-center` main `5ae74245685480d1f89660db51b698428c00481a` (v0.3.0), exact local file blobs verified.
-Target: HNL Dev Center only. QLTC/HCF/HCE source, data, GitHub, Firebase, R2 untouched.
+## Nguồn chuẩn
+HNL Dev GitHub `lengochieu1211-sudo/hnl-dev-center`, branch `dev`, HEAD cơ sở `ca169a4e269f6ec5c029e687d94c851e9cbdb84c` (v0.3.1). Mã nguồn 0.3.2 xem trước phát triển từ đúng source đó, chưa push. Tích hợp các thay đổi thành v0.3.3 trên DEV trước.
 
-## Symptoms and root causes
-1. Vercel project `hnl-dev-center` currently has **SSO protection enabled** (`all_except_custom_domains`). Unauthenticated mobile browsers may need a Vercel login or a time-limited share link. No change to access protections in this patch.
-2. `Preview Studio` uses a cross-origin iframe with an opaque sandbox origin (`allow-scripts allow-forms`). Firebase Auth/localStorage and target site X-Frame-Options/CSP may prevent rendering; no iframe can reliably override target authorization or anti-framing policies.
-3. Desktop selected 1920 px viewport was formerly rendered at the scaled iframe element width (e.g. 280 px on phone) instead of a true 1920 px browser viewport.
-4. 'Open in new tab' fallback was outside preview and easily missed on mobile if the iframe appeared blank.
+## Hiện trạng / Root cause
+- HNL Dev chỉ có 1 thẻ QLTC mặc định `dev`, che mất hệ thống PROD và DEV BACKUP.
+- Preview v0.3.1 nhúng web, ô URL ở dưới khung mô phỏng và thiếu lựa chọn môi trường, gây khó sử dụng điện thoại.
+- Vercel SSO trước đây chặn khách chưa đăng nhập; đã tắt bảo vệ cho trang HNL Dev công khai. Không liên quan Firebase QLTC.
 
-## Changes
-- Make embedded iframe keep the requested logical viewport (1920/1366/820/393/360 pixels) using transform scale.
-- Always display a persistent **Open Web in new tab** fallback bar inside the preview viewport and an external link under URL controls.
-- Keep iframe sandboxed without `allow-same-origin`, do not claim the target successfully loaded, and continue allowlisting HTTPS on web.app/firebaseapp.com/vercel.app.
-- Use title **HNL Dev** (shortened) across shell/browser/PWA label; bump version and service worker cache v0.3.1.
-- Add regression tests for correct embed viewport, fallback link, safe sandbox. No external AI API.
+## Thực hiện
+- Thêm ba thẻ QLTC PROD / DEV / DEV BACKUP, hiển thị mục đích, Firebase (nếu đã xác minh), Hosting site, HEAD GitHub cho PROD và DEV; DEV BACKUP không gán bừa HEAD.
+- Preview chọn môi trường QLTC, tự điền URL; PROD chặn nhúng, chỉ mở tab ngoài; DEV và DEV BACKUP có thể mở ngoài, nhúng thử giới hạn.
+- Giữ Preview hỗ trợ PC/laptop/tablet/iPhone/Android, iframe kích thước logic đúng và nút mở Web thật ở phía trên.
+- Thêm lựa chọn môi trường khi tạo hồ sơ QLTC; lưu trường `environment` tùy chọn, tương thích bản ghi cũ/JSON schemaVersion=1.
+- Không yêu cầu API AI, không lưu secrets, không sửa Firebase/R2/Hosting/GitHub của QLTC.
 
-## Files changed/new versus v0.3.0
-- package-lock.json
-- package.json
-- scripts/build.mjs
-- src/sw.js
-- src/index.html
-- src/styles.css
-- src/app.ts
-- src/manifest.webmanifest
-- tests/preview-browser.py
-- tests/preview.test.mjs
+## Môi trường kiểm chứng
+- PROD: `main`, Firebase `com-example-qlct-61329`, Hosting `hnlqltc.web.app` theo source; URL đọc được từ bên ngoài.
+- DEV: `dev`, Firebase `hnl-qltc-dev`, Hosting `hnl-qltc-dev.web.app`; truy vấn từ ngoài báo 509 (chưa xác định được nguyên nhân).
+- DEV BACKUP: Hosting site `hnl-qltc-dev-backup`, truy cập gốc `hnl-qltc-dev-backup.web.app` báo 404; preview channel trước đó có URL tạm, không coi là bản live.
+- Tính khả dụng trực tuyến và HEAD triển khai DEV BACKUP **chưa được xác nhận**.
 
-## Test gates
-- npm run typecheck: PASS.
-- npm run lint: PASS (project's static safety lint; no ESLint configuration).
-- npm test: 7/7 PASS.
-- npm run audit:public: PASS, 29 source files checked.
-- npm run build: PASS.
-- tests/browser-smoke.py: 7/7 viewport configurations PASS.
-- tests/preview-browser.py: 5/5 viewport configurations PASS; checks real logical iframe width, fallback URL, no horizontal overflow.
-- package.json / package-lock.json: version synchronized.
-- ZIP CRC / manifest / SHA256: checked when packaged.
-- Firebase config: not present in HNL Dev Center project and not changed.
-- GitHub workflows: unchanged from v0.3.0; CI on new branch must be checked separately after push.
+## Gate đã chạy (cục bộ)
+- TypeScript: PASS; lint an toàn tĩnh: PASS (không phải ESLint); npm test: 10/10 PASS; audit:public: PASS; Build: PASS.
+- Chromium iframe preview 5 kích thước: PASS; Chromium QLTC env 4 kích thước: PASS.
+- Package lock đồng bộ; file config Firebase không tồn tại trong HNL Dev; workflow CI không có lệnh deploy.
+- Runtime Golden thiết bị thật/Firebase/Auth multi-user: CHƯA KIỂM THỬ, KHÔNG CERTIFIED.
 
-## Known limitations
-- Cross-origin iframe preview remains optional/best effort; real logged-in Firebase/Google web apps should be opened in their own browser tab.
-- Vercel SSO remains enabled; share links expire and the user may need to authenticate.
-- Chromium DOM tests are NOT real iPhone Safari / physical Android / AutoCAD Runtime Golden.
-- HNL Dev stores work locally in each browser and is not multi-device synced.
-- No changes to any PROD system.
+## Rủi ro và hạn chế
+- URL DEV / DEV BACKUP có thể không phục vụ live; không che giấu kết quả thất bại.
+- Dữ liệu hồ sơ lưu localStorage theo domain, không tự đồng bộ các thiết bị.
+- Không thực hiện thao tác dữ liệu PROD từ ứng dụng quản trị.
+- Cần đo build/CI từ HEAD đẩy lên GitHub và xác nhận Vercel READY trước khi giao Web v0.3.3.
 
-## Certification
-DEV Candidate; do not label CERTIFIED until hosted runtime and mobile device Golden are confirmed.
+## Đóng gói
+FULL SOURCE có 32 file. PATCH từ DEV v0.3.1 có 14 file. ZIP CRC PASS.

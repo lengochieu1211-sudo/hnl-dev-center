@@ -22,6 +22,9 @@ with sync_playwright() as p:
   page.locator('#preview-device').select_option('desktop')
   page.locator('input[value=web]').check()
   page.locator('#preview-url').fill('https://test-preview.vercel.app/')
+  assert page.locator('#open-web-external').is_visible(),(width,height)
+  assert page.locator('#open-web-external').get_attribute('href')=='https://test-preview.vercel.app/'
+  assert page.locator('#preview-url-status').is_visible()
   page.locator('#load-web-preview').click()
   assert page.locator('.live-frame').count()==1
   iframe=page.locator('.live-frame')

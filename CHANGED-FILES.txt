@@ -1,15 +1,15 @@
-HNL Dev v0.3.1 — changed source files relative to v0.3.0
-README.md
-HANDOFF.md
+HNL Dev v0.3.3 — base GitHub DEV v0.3.1 exact HEAD ca169a4e269f6ec5c029e687d94c851e9cbdb84c; includes mobile preview v0.3.2 candidate.
 CHANGED-FILES.txt
+HANDOFF.md
+README.md
+REPORT.md
 package-lock.json
 package.json
-REPORT.md
 scripts/build.mjs
-src/sw.js
+src/app.ts
 src/index.html
 src/styles.css
-src/app.ts
-src/manifest.webmanifest
+src/sw.js
 tests/preview-browser.py
 tests/preview.test.mjs
+tests/qltc-environments-browser.py

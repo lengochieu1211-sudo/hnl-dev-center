@@ -1,10 +1,10 @@
-# HNL Dev Center 0.3.0 — Bản DEV an toàn – chuẩn bị GitHub Public, không API AI
+# HNL Dev v0.3.3 — bảng quản lý phát triển (Web staging)
 
-HNL Dev Center là một **Web/PWA quản lý quá trình phát triển** HNL QLTC, HCF và HCE. Đây là công cụ làm việc riêng biệt, **không thay đổi** ba ứng dụng hiện có. Bản 0.3.0 có chức năng thật nhưng chưa có backend/xác thực/đồng bộ đa thiết bị và **chưa được triển khai lên Web công khai**.
+HNL Dev Center là một **Web/PWA quản lý quá trình phát triển** HNL QLTC, HCF và HCE. Đây là công cụ làm việc riêng biệt, **không thay đổi** ba ứng dụng hiện có. Bản v0.3.3 đang ở nhánh DEV của repo công khai; Web staging được triển khai độc lập. Không có backend, xác thực người quản trị hay đồng bộ dữ liệu nhiều thiết bị.
 
 ## Tính năng chạy được
 
-- Tổng quan 3 ứng dụng / 2 repository; đọc **exact HEAD** từng nhánh qua GitHub REST `GET /git/ref/heads/...`, không cần GitHub token. Tránh lỗi bỏ sót nhánh khi repository có trên 100 nhánh.
+- Tổng quan 3 ứng dụng / 2 repository; QLTC hiển thị ba môi trường PROD, DEV, DEV BACKUP riêng biệt (PROD chỉ đọc; DEV BACKUP là Hosting site không giả định cùng HEAD DEV); đọc **exact HEAD** từng nhánh qua GitHub REST `GET /git/ref/heads/...`, không cần GitHub token. Tránh lỗi bỏ sót nhánh khi repository có trên 100 nhánh.
 - Trang GitHub Actions/CI: đọc workflow runs theo từng nhánh; chỉ hiển thị run trùng **exact HEAD mới đọc lại**; không coi CI PASS là Runtime Golden/CERTIFIED.
 - Hồ sơ công việc: tạo, lưu trên trình duyệt (`localStorage`), lấy lại, lọc dự án, đổi trạng thái thủ công, xác nhận khi xóa. Các nhãn trạng thái **do người dùng tự ghi nhận**, không phải GitHub/CI tự xác minh.
 - Handoff (bàn giao) sang ChatGPT/Claude/Gemini bằng nút sao chép + mở trang; Antigravity nhận nội dung dán trong ứng dụng PC. Không tích hợp API AI và không tự đồng bộ cuộc chat.
@@ -19,7 +19,7 @@ HNL Dev Center là một **Web/PWA quản lý quá trình phát triển** HNL QL
 
 1. Tải FULL SOURCE ZIP 0.3.0, chọn **Extract All** để giải nén.
 2. Cài **Node.js 22** nếu máy chưa cài.
-3. Vào thư mục `hnl-dev-center-v0.3.1`, nhấp đúp `START-WINDOWS.bat`.
+3. Vào thư mục `hnl-dev-center-v0.3.3`, nhấp đúp `START-WINDOWS.bat`.
 4. Mở `http://127.0.0.1:4173` nếu trình duyệt chưa mở.
 
 **Kiểm tra và build lại từ source:**
@@ -38,8 +38,8 @@ npm start
 
 ## Sử dụng trên điện thoại, tablet và iPhone
 
-- Bản hiện tại chạy `localhost` và chỉ truy cập trên chính PC đang chạy, **không** phải URL sử dụng chung qua các thiết bị.
-- File `vercel.json` có sẵn cấu hình cho Web DEV tĩnh, nhưng **chưa Deploy**; cần cấp phép, tạo repository/cấu hình Vercel và kiểm tra HTTPS thực tế trước khi mở trên iPhone/Android.
+- Có thể dùng local tại `localhost` hoặc mở Web staging tại `https://hnldev.vercel.app` nếu bản đã được triển khai; giao diện là bản theo HEAD của HNL Dev được công bố.
+- Đã có repository riêng `lengochieu1211-sudo/hnl-dev-center`. Web tĩnh Vercel phải được kiểm tra lại sau mỗi bản phát hành; chỉ nhánh HNL Dev `dev` được phép chỉnh trước, không tự triển khai PROD QLTC.
 - Sau khi có HTTPS, có thể mở trên Safari/Chrome rồi thêm ra màn hình chính; lưu ý dữ liệu hồ sơ **vẫn độc lập theo trình duyệt/thiết bị** cho đến khi xây xác thực và backend đồng bộ an toàn.
 - Khi đổi máy hoặc muốn sao lưu: vào **Sao lưu hồ sơ → Tải backup JSON**, lưu Google Drive thủ công; trên thiết bị mới chọn **Nhập JSON**.
 
@@ -78,7 +78,7 @@ npm start
 5. Thiết kế connector theo quyền tối thiểu để lấy artifacts/Drive backup, nhưng **không tự động Push/Deploy**.
 
 
-## Điểm mới v0.3.1 – chuẩn bị repository Public
+## Điểm mới v0.3.3 – chuẩn bị repository Public
 
 - Khóa service worker (PWA) chỉ cache tài nguyên tĩnh đã liệt kê; không cache URL chứa query hoặc endpoint mới.
 - Bổ sung `.gitignore` và `npm run audit:public` để rà file có dấu hiệu nhạy cảm trước khi phát hành.
@@ -86,3 +86,11 @@ npm start
 - Bỏ URL PROD QLTC khỏi liên kết Preview mặc định: chỉ hiện nút mở trang khi đã nhập URL hợp lệ.
 - Hướng dẫn tạo repository riêng ở `PUBLIC-REPOSITORY-HANDOFF.md`. Repository phải Public, không dùng repo QLTC/HCF/HCE.
 - Đã kiểm tra build cục bộ; **chưa tạo GitHub repository, chưa chạy CI trên repo mới và chưa triển khai Vercel**.
+
+## QLTC: xác minh tách môi trường (2026-10-27)
+- PROD: nhánh `main`, Firebase project `com-example-qlct-61329`, Hosting site `hnlqltc`. Không nhúng PROD hoặc sửa dữ liệu.
+- DEV: nhánh `dev`, Firebase project `hnl-qltc-dev`, Hosting site `hnl-qltc-dev`.
+- DEV BACKUP: Hosting site `hnl-qltc-dev-backup`; không phải một nhánh Git riêng được xác minh. Exact HEAD bản triển khai và Firebase project của site backup cần đọc lại từ checkpoint hoặc Hosting.
+- Kiểm tra HTTP từ trình duyệt ngoài ghi nhận PROD mở được, DEV bị lỗi 509 và DEV BACKUP 404 tại thời điểm kiểm tra. Không coi đây là chứng nhận runtime hoặc sự cố kết luận vĩnh viễn.
+- Preview trên HNL Dev cho phép chọn đúng môi trường; PROD chỉ mở tab ngoài; DEV/DEV BACKUP có thể xem ở tab ngoài và thử nhúng giới hạn.
+- Backup JSON công việc thêm trường tùy chọn `environment`, vẫn giữ schemaVersion=1 và tương thích các bản ghi cũ thiếu trường này.
