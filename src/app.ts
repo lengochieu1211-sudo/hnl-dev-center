@@ -88,17 +88,27 @@ function handoffText(project: ProjectInfo, title: string, details: string, risk:
   return `HNL DEV CENTER — HỒ SƠ BÀN GIAO\n\nỨng dụng: ${project.name}\nRepository: ${project.repo}\nBranch: ${project.branch}\nHEAD đã đọc trong phiên (cần xác minh lại trước khi sửa): ${headOverride ?? verifiedHeads[project.id] ?? 'CHƯA XÁC MINH — KHÔNG ĐƯỢC SỬA SOURCE DỰA TRÊN HEAD CŨ'}\nLoại công việc: ${risk}\nYêu cầu: ${title}\n\nMÔ TẢ\n${details.trim() || '(Chưa có mô tả chi tiết)'}\n\nQUY TRÌNH BẮT BUỘC\n1. Kiểm tra lại đúng HEAD hiện tại trên GitHub và checkpoint gần nhất. Không rollback.\n2. Audit nguyên nhân gốc và các phần liên quan trước khi chỉnh.\n3. Trình bày hiện trạng, nguyên nhân, đề xuất, file ảnh hưởng và rủi ro; patch tối thiểu.\n4. Chỉ kiểm thử trong DEV/workspace an toàn; không đổi Firebase/R2/GitHub/domain.\n5. Chạy typecheck/lint/build, regression, Rules (nếu liên quan), Runtime Golden thực tế khi cần.\n6. Báo thay đổi, kết quả test, rủi ro; đóng gói PATCH + FULL SOURCE + REPORT + SHA256 theo đúng HEAD; lưu Drive khi có quyền.\n7. KHÔNG Push, Merge, Deploy PROD hoặc thay đổi dữ liệu thật khi chưa được phê duyệt.\n\nLƯU Ý: Đây là văn bản để sao chép; không tự đồng bộ chat giữa các nhà cung cấp AI.`;
 }
 function setPreview(): void {
-  if(document.querySelector<HTMLInputElement>('input[name="preview-mode"]:checked')?.value==='images')return;
+  const mode=document.querySelector<HTMLInputElement>('input[name="preview-mode"]:checked')?.value;
+  if(mode==='images')return;
   const sizes: Record<string, [number, number]> = { desktop: [1920,1080], laptop: [1366,768], tablet: [820,1180], iphone: [393,852], android: [360,800] };
-  const chosen = el<HTMLSelectElement>('preview-device').value; const base = sizes[chosen] ?? sizes.desktop;
-  const rotated = el<HTMLButtonElement>('rotate-preview').dataset.rotated === 'yes'; const width = rotated ? base[1] : base[0]; const height = rotated ? base[0] : base[1];
-  const stage = document.querySelector<HTMLElement>('.preview-stage'); const frame = el<HTMLDivElement>('sim-device');
-  // Scaled simulation to fit visible workspace, NOT a real app screenshot or runtime test.
-  const max = Math.max(215, (stage?.clientWidth ?? 850) - 50); const scale = Math.min(1, max / width);
-  frame.style.width = `${Math.max(155, Math.round(width * scale))}px`; frame.style.height = `${Math.min(560, Math.max(320, Math.round(height * scale)))}px`;
-  frame.classList.toggle('phone', width <= 500); el<HTMLElement>('preview-size').textContent = `${width} × ${height}px · mô phỏng`;
-  const id = el<HTMLSelectElement>('preview-app').value as ProjectId; const project = projects.find(p => p.id === id) ?? projects[0];
-  const title=document.getElementById('sim-title'); const eyebrow=document.getElementById('sim-eyebrow');if(title)title.textContent=project.name;if(eyebrow)eyebrow.textContent=project.subtitle.toUpperCase();
+  const chosen=el<HTMLSelectElement>('preview-device').value;const base=sizes[chosen]??sizes.desktop;
+  const rotated=el<HTMLButtonElement>('rotate-preview').dataset.rotated==='yes';
+  const width=rotated?base[1]:base[0];const height=rotated?base[0]:base[1];
+  const stage=document.querySelector<HTMLElement>('.preview-stage');const frame=el<HTMLDivElement>('sim-device');
+  const maxWidth=Math.max(155,(stage?.clientWidth??850)-44);
+  const scale=Math.min(1,maxWidth/width,560/height);
+  frame.style.width=`${Math.round(width*scale)}px`;
+  frame.style.height=`${Math.round(height*scale)}px`;
+  frame.classList.toggle('phone',width<=500 && mode!=='web');
+  el<HTMLElement>('preview-size').textContent=`${width} × ${height}px · ${mode==='web'?'viewport thật trong iframe':'mô phỏng'}`;
+  // The live iframe keeps the real layout viewport, then is visually scaled into the preview stage.
+  // Merely shrinking an iframe element made desktop previews render the mobile layout.
+  const iframe=frame.querySelector<HTMLIFrameElement>('iframe.live-frame');
+  if(iframe){iframe.style.width=`${width}px`;iframe.style.height=`${height}px`;iframe.style.transform=`scale(${scale})`;}
+  const id=el<HTMLSelectElement>('preview-app').value as ProjectId;
+  const project=projects.find(p=>p.id===id)??projects[0];
+  const title=document.getElementById('sim-title');const eyebrow=document.getElementById('sim-eyebrow');
+  if(title)title.textContent=project.name;if(eyebrow)eyebrow.textContent=project.subtitle.toUpperCase();
 }
 
 function renderTasks(): void {
@@ -198,7 +208,7 @@ async function refreshCI():Promise<void> {
 function changePreviewMode(mode:string):void {
   const stage=document.querySelector<HTMLElement>('.preview-stage');if(!stage)return;
   el<HTMLElement>('web-preview-controls').hidden=mode!=='web';el<HTMLElement>('image-preview-controls').hidden=mode!=='images';
-  el<HTMLElement>('preview-message').textContent=mode==='web'?'Iframe có thể bị chặn bởi chính sách của Web đích hoặc xác thực. Hãy mở tab mới để kiểm tra thực tế.':mode==='images'?'Ảnh được xử lý tạm trong trình duyệt, không tải lên máy chủ. Không phải Runtime Golden.':'Bản mô phỏng chỉ minh họa bố cục. Preview không xác nhận runtime thực tế.';
+  el<HTMLElement>('preview-message').textContent=mode==='web'?'Nhúng iframe chỉ là thử nghiệm. Nếu trắng hoặc yêu cầu đăng nhập, chọn “Mở Web thật ở tab mới”. Đây không phải Runtime Golden.':mode==='images'?'Ảnh được xử lý tạm trong trình duyệt, không tải lên máy chủ. Không phải Runtime Golden.':'Bản mô phỏng chỉ minh họa bố cục. Preview không xác nhận runtime thực tế.';
   const frame=el<HTMLDivElement>('sim-device');
   if(mode==='simulation'){restoreSimulation();setPreview();}
   else if(mode==='web'){frame.replaceChildren(); const tip=document.createElement('div');tip.className='app-notice-inline';tip.style.padding='20px';tip.textContent='Nhập URL Web DEV ở bên dưới để xem trước.';frame.append(tip);setPreview();}
@@ -247,7 +257,24 @@ function main(): void {
   const grid=el<HTMLElement>('ci-grid');for(const project of projects){const card=document.createElement('article');card.className='ci-card';card.id=`ci-${project.id}`;grid.append(card);drawCI(project,null,'Chưa bấm Cập nhật CI');}
   el<HTMLButtonElement>('refresh-ci').addEventListener('click',()=>void refreshCI());
   document.querySelectorAll<HTMLInputElement>('input[name="preview-mode"]').forEach(x=>x.addEventListener('change',()=>changePreviewMode(x.value)));
-  el<HTMLButtonElement>('load-web-preview').addEventListener('click',()=>{const url=validatePreviewUrl(el<HTMLInputElement>('preview-url').value);if(!url){showToast('Chỉ chấp nhận URL HTTPS của web.app / firebaseapp.com / vercel.app.');return;}const frame=el<HTMLDivElement>('sim-device');frame.replaceChildren();const iframe=document.createElement('iframe');iframe.className='live-frame';iframe.setAttribute('sandbox','allow-scripts allow-forms');iframe.referrerPolicy='no-referrer';iframe.title='Xem trước Web DEV (có thể bị chặn)';iframe.src=url;frame.append(iframe);const a=el<HTMLAnchorElement>('open-web-external');a.href=url;a.hidden=false;showToast('Đã mở Web dưới sandbox. Nếu trắng hãy dùng nút mở tab mới.');});
+  el<HTMLButtonElement>('load-web-preview').addEventListener('click',()=>{
+    const url=validatePreviewUrl(el<HTMLInputElement>('preview-url').value);
+    if(!url){showToast('Chỉ chấp nhận URL HTTPS của web.app / firebaseapp.com / vercel.app.');return;}
+    const frame=el<HTMLDivElement>('sim-device');frame.replaceChildren();
+    const iframe=document.createElement('iframe');iframe.className='live-frame';
+    // An opaque iframe origin protects HNL Dev data, but will restrict apps needing
+    // Firebase Auth, cookies or localStorage. Their real browser tab is the supported fallback.
+    iframe.setAttribute('sandbox','allow-scripts allow-forms allow-popups');
+    iframe.referrerPolicy='no-referrer';iframe.title='Nhúng trang Web DEV; có thể bị chặn';
+    const bar=document.createElement('div');bar.className='web-preview-fallback';
+    const note=document.createElement('span');note.textContent='Khung trắng / lỗi đăng nhập? Xem Web thật';
+    const fallback=document.createElement('a');fallback.href=url;fallback.target='_blank';fallback.rel='noopener noreferrer';fallback.textContent='Mở tab mới ↗';
+    bar.append(note,fallback);frame.append(iframe,bar);
+    iframe.src=url;
+    const external=el<HTMLAnchorElement>('open-web-external');external.href=url;external.hidden=false;
+    setPreview();
+    showToast('Đã thử nhúng trang. Không thể xác nhận trạng thái Web đích từ iframe; hãy dùng tab mới nếu khung trắng.');
+  });
   el<HTMLInputElement>('preview-before').addEventListener('change',e=>loadScreenshot('before',(e.currentTarget as HTMLInputElement).files?.[0]));
   el<HTMLInputElement>('preview-after').addEventListener('change',e=>loadScreenshot('after',(e.currentTarget as HTMLInputElement).files?.[0]));
   setPreview(); void updateBranches();

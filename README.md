@@ -19,7 +19,7 @@ HNL Dev Center là một **Web/PWA quản lý quá trình phát triển** HNL QL
 
 1. Tải FULL SOURCE ZIP 0.3.0, chọn **Extract All** để giải nén.
 2. Cài **Node.js 22** nếu máy chưa cài.
-3. Vào thư mục `hnl-dev-center-v0.3.0`, nhấp đúp `START-WINDOWS.bat`.
+3. Vào thư mục `hnl-dev-center-v0.3.1`, nhấp đúp `START-WINDOWS.bat`.
 4. Mở `http://127.0.0.1:4173` nếu trình duyệt chưa mở.
 
 **Kiểm tra và build lại từ source:**
@@ -78,7 +78,7 @@ npm start
 5. Thiết kế connector theo quyền tối thiểu để lấy artifacts/Drive backup, nhưng **không tự động Push/Deploy**.
 
 
-## Điểm mới v0.3.0 – chuẩn bị repository Public
+## Điểm mới v0.3.1 – chuẩn bị repository Public
 
 - Khóa service worker (PWA) chỉ cache tài nguyên tĩnh đã liệt kê; không cache URL chứa query hoặc endpoint mới.
 - Bổ sung `.gitignore` và `npm run audit:public` để rà file có dấu hiệu nhạy cảm trước khi phát hành.

@@ -1,13 +1,15 @@
-.gitattributes
-.github/workflows/ci.yml
-.gitignore
-PUBLIC-REPOSITORY-HANDOFF.md
+HNL Dev v0.3.1 — changed source files relative to v0.3.0
 README.md
+HANDOFF.md
+CHANGED-FILES.txt
 package-lock.json
 package.json
+REPORT.md
 scripts/build.mjs
-scripts/public-safety.mjs
-src/app.ts
-src/index.html
 src/sw.js
-tests/public-repo.test.mjs
+src/index.html
+src/styles.css
+src/app.ts
+src/manifest.webmanifest
+tests/preview-browser.py
+tests/preview.test.mjs
