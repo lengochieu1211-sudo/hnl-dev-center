@@ -1,0 +1,15 @@
+{
+  "name": "hnl-dev-center",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Read-only local-workflow HNL Dev Center; no AI API keys or production access",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "node scripts/lint.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs",
+    "audit:public": "node scripts/public-safety.mjs"
+  }
+}

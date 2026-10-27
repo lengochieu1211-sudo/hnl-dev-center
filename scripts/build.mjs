@@ -1,0 +1,14 @@
+import { execFileSync } from 'node:child_process';
+import { mkdir, rm, copyFile, readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const root = resolve(import.meta.dirname, '..');
+const out = resolve(root, 'dist');
+execFileSync('tsc', ['--noEmit', '-p', resolve(root, 'tsconfig.json')], { stdio: 'inherit' });
+await rm(out, { recursive: true, force: true });
+await mkdir(out, { recursive: true });
+execFileSync('tsc', ['--target', 'ES2022', '--module', 'none', '--strict', '--skipLibCheck', '--outFile', resolve(out, 'app.js'), resolve(root, 'src/app.ts')], { stdio: 'inherit' });
+for (const filename of ['index.html', 'styles.css', 'icon.svg', 'manifest.webmanifest', 'sw.js', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) await copyFile(resolve(root, 'src', filename), resolve(out, filename));
+const html = await readFile(resolve(out, 'index.html'), 'utf8');
+if (!html.includes('app.js') || !html.includes('styles.css')) throw new Error('Incomplete static build');
+await writeFile(resolve(out, 'VERSION.txt'), 'HNL Dev Center 0.3.0 - read-only, no API keys\n');
+console.log('BUILD PASS:', out);

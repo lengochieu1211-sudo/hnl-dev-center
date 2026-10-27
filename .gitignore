@@ -1,0 +1,24 @@
+# Local build, tooling, diagnostic data (never publish)
+node_modules/
+dist/
+.vercel/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+*.zip
+*.apk
+*.exe
+*.key
+*.pem
+*.p12
+*credentials*.json
+*service-account*.json
+*backup*.json
+*-BACKUP.json
+.DS_Store
+__pycache__/
+playwright-report/
+test-results/
+preview-qa-*.png

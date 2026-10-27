@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": "npm install --global typescript@5.9.3 --ignore-scripts --no-audit --no-fund && npm run build",
+  "outputDirectory": "dist",
+  "headers": [{
+    "source": "/(.*)",
+    "headers": [
+      {"key": "X-Content-Type-Options", "value": "nosniff"},
+      {"key": "Referrer-Policy", "value": "no-referrer"},
+      {"key": "Content-Security-Policy", "value": "default-src 'self'; connect-src 'self' https://api.github.com; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; frame-src https://*.web.app https://*.firebaseapp.com https://*.vercel.app; object-src 'none'; base-uri 'none'; form-action 'self'"}
+    ]
+  }]
+}

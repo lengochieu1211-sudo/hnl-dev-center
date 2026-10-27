@@ -1,0 +1,36 @@
+name: HNL Dev Center - Read-only CI
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install TypeScript compiler (build-time only)
+        run: npm install --global typescript@5.9.3 --ignore-scripts --no-audit --no-fund
+      - name: Validate lock and clean install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Public repository safety gate
+        run: node scripts/public-safety.mjs
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Check dist required assets
+        run: |
+          test -s dist/index.html
+          test -s dist/app.js
+          test -s dist/styles.css

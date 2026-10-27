@@ -1,0 +1,13 @@
+.gitattributes
+.github/workflows/ci.yml
+.gitignore
+PUBLIC-REPOSITORY-HANDOFF.md
+README.md
+package-lock.json
+package.json
+scripts/build.mjs
+scripts/public-safety.mjs
+src/app.ts
+src/index.html
+src/sw.js
+tests/public-repo.test.mjs
