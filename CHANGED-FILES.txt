@@ -1,15 +1,20 @@
-HNL Dev v0.3.3 — base GitHub DEV v0.3.1 exact HEAD ca169a4e269f6ec5c029e687d94c851e9cbdb84c; includes mobile preview v0.3.2 candidate.
-CHANGED-FILES.txt
-HANDOFF.md
-README.md
-REPORT.md
-package-lock.json
-package.json
-scripts/build.mjs
-src/app.ts
-src/index.html
-src/styles.css
-src/sw.js
-tests/preview-browser.py
-tests/preview.test.mjs
-tests/qltc-environments-browser.py
+HNL Dev v0.4.0 — changes relative to FULL SOURCE ZIP v0.3.3 (GitHub dev base de529cf5ba0818b82ea3e6ae9c718fd38bacdffe).
+Modified:
+  src/app.ts                  real GitHub artifact/Issues modules, SHA & run verification, read-only interactions
+  src/index.html              new menu tabs and controls
+  src/styles.css              responsive cards for artifacts and Issues
+  src/sw.js                   cache version bust (no API caching)
+  .gitignore                  ignore generated UI test screenshots / JSON
+  package.json                version
+  package-lock.json           matching version
+  scripts/build.mjs           version label in compiled output
+  tests/browser-smoke.py      align preview test with existing PROD no-embed rule
+  README.md                   v0.4 instructions
+  CHANGED-FILES.txt           this inventory
+  HANDOFF.md                  checkpoint
+  REPORT.md                   audit and tests
+Added:
+  tests/github-modules.test.mjs    unit regression tests
+  tests/github-live-browser.py    mocked GitHub Playwright test (no backend writes)
+UNCHANGED: original project-specific logic, GitHub workflows, Firebase/R2/Hosting, task backup schema, QLTC/HCF/HCE source, repository names/branches.
+No Push, no merge, no deploy.

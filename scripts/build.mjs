@@ -10,5 +10,5 @@ execFileSync('tsc', ['--target', 'ES2022', '--module', 'none', '--strict', '--sk
 for (const filename of ['index.html', 'styles.css', 'icon.svg', 'manifest.webmanifest', 'sw.js', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) await copyFile(resolve(root, 'src', filename), resolve(out, filename));
 const html = await readFile(resolve(out, 'index.html'), 'utf8');
 if (!html.includes('app.js') || !html.includes('styles.css')) throw new Error('Incomplete static build');
-await writeFile(resolve(out, 'VERSION.txt'), 'HNL Dev 0.3.3 - read-only, no API keys\n');
+await writeFile(resolve(out, 'VERSION.txt'), 'HNL Dev 0.4.0 - read-only, no API keys\n');
 console.log('BUILD PASS:', out);

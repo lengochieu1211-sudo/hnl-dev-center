@@ -1,7 +1,10 @@
-HNL Dev v0.3.3 — HANDOFF 2026-10-27
-Repo: lengochieu1211-sudo/hnl-dev-center
-Branch target: dev (never change QLTC main/dev)
-Base DEV HEAD: ca169a4e269f6ec5c029e687d94c851e9cbdb84c
-Changes: QLTC PROD/DEV/DEV BACKUP cards, explicit preview environment selector, PROD non-embed, optional task environment, v0.3.2 mobile Web Preview enhancements.
-Qltc PROD firebase com-example-qlct-61329, DEV firebase hnl-qltc-dev, backup hosting site hnl-qltc-dev-backup. DEV BACKUP deployed exact HEAD unknown. PROD only read-only.
-No Firebase/R2 data mutation. No PROD deployment. Runtime Golden NOT PASS. Continue with CI, Vercel staging verification, Drive backup and actual device tests.
+# HNL Dev — HANDOFF v0.4.0 (DEV Candidate)
+Date: 2026-10-27 (Asia/Ho_Chi_Minh)
+Repo: lengochieu1211-sudo/hnl-dev-center (PUBLIC)
+Baseline branch: dev
+Exact base HEAD (verified): de529cf5ba0818b82ea3e6ae9c718fd38bacdffe
+Current online HNL Dev: v0.3.3 at https://hnldev.vercel.app/
+New source: v0.4.0 local candidate, NOT PUSHED / NOT DEPLOYED.
+Scope: Add read-only real GitHub Actions artifacts and GitHub Issues browsing; preserve QLTC PROD/DEV/DEV BACKUP guards, HCF/HCE, local task data, existing preview and Firebase/R2 boundaries.
+Gate: See REPORT.md and external release report for actual build and browser tests. CI at new SHA not applicable until publishing; no Runtime Golden / CERTIFIED.
+Next: Compare new source with current dev HEAD again; seek approval for DEV-only Push; run CI exact SHA; stage Vercel with approval; test GitHub API and download requiring login on real devices; save checkpoint and artifacts to Drive.

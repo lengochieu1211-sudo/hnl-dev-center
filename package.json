@@ -1,6 +1,6 @@
 {
   "name": "hnl-dev-center",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "private": true,
   "description": "Read-only local-workflow HNL Dev Center; no AI API keys or production access",
   "type": "module",

@@ -22,3 +22,8 @@ __pycache__/
 playwright-report/
 test-results/
 preview-qa-*.png
+# Local browser screenshots and temporary test files
+github-builds-*.png
+github-modules-*.png
+qltc-env-*.png
+test-backup-*.json

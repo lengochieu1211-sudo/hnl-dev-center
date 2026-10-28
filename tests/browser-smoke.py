@@ -40,7 +40,7 @@ with sync_playwright() as p:
         page.locator('#task-project').select_option('hcf')
         page.locator('button[type=submit]').click()
         assert page.locator('.task-row').count()==1,(size,errors)
-        assert 'HEAD đã đọc trong phiên' in page.locator('#handoff-output').input_value()
+        assert 'HEAD tham chiếu phát triển' in page.locator('#handoff-output').input_value()
         # retest status persistence and backup change
         page.locator('.task-actions select').select_option('Đang audit')
         assert page.locator('.task-actions select').input_value()=='Đang audit'
@@ -74,7 +74,8 @@ with sync_playwright() as p:
         page.locator('#preview-url').fill('https://evil.com')
         page.locator('#load-web-preview').click()
         assert page.locator('.live-frame').count()==0
-        page.locator('#preview-url').fill('https://hnlqltc.web.app')
+        page.locator('#preview-environment').select_option('dev')
+        page.locator('#preview-url').fill('https://hnl-qltc-dev.web.app')
         page.locator('#load-web-preview').click()
         assert page.locator('.live-frame').count()==1,(size,errors)
         page.locator('input[value="simulation"]').check()

@@ -36,3 +36,26 @@
 .preview-env-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .task-env-group[hidden],.preview-env-group[hidden]{display:none!important}
 @media(max-width:900px){.environment-grid{grid-template-columns:1fr}}
+
+/* v0.4: GitHub Actions artifacts & Issues (read-only, mobile first). */
+.real-tools-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px}
+.real-tools-controls>label,.real-env-control>label{font-size:12px;font-weight:700;color:#53677b}
+.real-tools-controls select,.real-env-control select{background:#fff;border:1px solid #cedce9;padding:11px 12px;border-radius:9px;max-width:100%;color:#17334e}
+.real-env-control{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.real-env-control[hidden]{display:none!important}
+.real-tools-controls>a.secondary-button{text-decoration:none;display:inline-flex;align-items:center}
+.build-list,.issues-list{display:grid;gap:12px;margin-bottom:16px}
+.build-run,.issue-row{background:#fff;border:1px solid #dde8ef;padding:16px;border-radius:12px;min-width:0}
+.build-run-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.build-run-head>a,.issue-row>a{font-weight:700;font-size:13px;color:#08798d;overflow-wrap:anywhere}
+.build-run .hint,.issue-row .hint{margin:10px 0 0;font-size:11px;color:#62758a;overflow-wrap:anywhere}
+.build-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:11px 0}
+.build-actions>a,.artifact-item>a{color:#007586;font-size:12px;font-weight:700;text-decoration:underline}
+.artifacts-list{display:grid;gap:7px}
+.artifact-item{border:1px solid #e0ebe7;border-radius:9px;background:#f7fbfa;padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.artifact-item strong{font-size:12px;overflow-wrap:anywhere}
+.artifact-item span{font-size:11px;color:#50677d}
+.status-note{padding:14px;border:1px solid #d9e5ef;border-radius:10px;background:#f8fbfd;color:#4b6177;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.status-note.warning{border-color:#e6c8b5;background:#fff8f2;color:#99562b}
+.real-tool-foot{font-size:12px;color:#52657c;line-height:1.7}
+@media(max-width:650px){.real-tools-controls{align-items:stretch;flex-direction:column}.real-tools-controls>select,.real-env-control select,.real-tools-controls>button,.real-tools-controls>a{width:100%}.real-env-control{display:flex;align-items:stretch;flex-direction:column;width:100%}.build-run-head{align-items:flex-start;flex-direction:column}.build-actions{align-items:stretch;flex-direction:column}.build-actions>*{width:100%}.artifact-item{align-items:flex-start;flex-direction:column}}

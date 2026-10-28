@@ -1,5 +1,5 @@
 type ProjectId = 'qltc' | 'hcf' | 'hce';
-type PageId = 'dashboard' | 'tasks' | 'preview' | 'safety' | 'ci' | 'backup';
+type PageId = 'dashboard' | 'tasks' | 'preview' | 'safety' | 'ci' | 'backup' | 'builds' | 'issues';
 type ProjectInfo = { id: ProjectId; name: string; shortName: string; subtitle: string; repo: string; branch: string; baseline: string; description: string };
 type GitHubBranch = { name: string; commit?: { sha?: string } };
 const projects: ProjectInfo[] = [
@@ -18,7 +18,7 @@ const qltcEnvironments: readonly QltcEnvironment[] = [
 ];
 function isQltcEnv(v:unknown): v is QltcEnvId { return v==='prod'||v==='dev'||v==='dev-backup'; }
 const qltcVerifiedHeads: Partial<Record<'prod'|'dev',string>> = {};
-const labels: Record<PageId, string> = { dashboard: 'Tổng quan', tasks: 'Hồ sơ công việc', preview: 'Preview Studio', safety: 'Kiểm soát an toàn', ci: 'GitHub Actions / CI', backup: 'Sao lưu hồ sơ' };
+const labels: Record<PageId, string> = { dashboard: 'Tổng quan', tasks: 'Hồ sơ công việc', preview: 'Preview Studio', safety: 'Kiểm soát an toàn', ci: 'GitHub Actions / CI', backup: 'Sao lưu hồ sơ', builds: 'Bản build thật', issues: 'GitHub Issues' };
 const safetySteps: { name: string; detail: string }[] = [
   { name: 'Xác minh đúng HEAD', detail: 'Đọc trực tiếp GitHub, chốt branch và mã commit trước mọi thay đổi.' },
   { name: 'Audit (kiểm tra) trước khi sửa', detail: 'Phân tích nguyên nhân gốc, phạm vi file, UI, dữ liệu và ảnh hưởng chéo.' },
@@ -279,6 +279,154 @@ async function refreshCI():Promise<void> {
     }));
   }finally{btn.disabled=false;btn.textContent='↻ Cập nhật CI';}
 }
+// v0.4.0 — read-only GitHub workflow artifacts & issues. Public GitHub APIs only.
+// A GitHub branch HEAD is NOT evidence that a specific Firebase Hosting site runs this SHA.
+type BuildTarget = { project:ProjectInfo; branch:string; label:string };
+type GithubArtifact = { id:number; name:string; size_in_bytes:number; expired:boolean; expires_at?:string; workflow_run?:{id:number;head_sha?:string;head_branch?:string} };
+type GithubIssue = { number:number; title:string; state:string; html_url:string; updated_at:string; pull_request?:unknown; labels?:Array<{name?:string}> };
+function validSha(value:unknown):value is string{return typeof value==='string'&&/^[a-f0-9]{40}$/.test(value);}
+function validRun(value:unknown,repo:string,sha:string):value is WorkflowRun{
+  if(!value||typeof value!=='object')return false;
+  const v=value as Partial<WorkflowRun>;
+  return Number.isSafeInteger(v.id)&&Number(v.id)>0&&typeof v.name==='string'&&validSha(v.head_sha)&&v.head_sha===sha&&
+    typeof v.status==='string'&&typeof v.html_url==='string'&&v.html_url===`https://github.com/${repo}/actions/runs/${v.id}`;
+}
+function buildTarget():BuildTarget|null{
+  const project=projects.find(x=>x.id===el<HTMLSelectElement>('build-project').value);
+  if(!project)return null;
+  if(project.id==='qltc'){
+    const id=el<HTMLSelectElement>('build-environment').value;
+    if(!isQltcEnv(id))return null;
+    const env=qltcEnvironment(id);
+    if(!env.branch)return null; // DEV BACKUP has no independently verified source-to-deployment mapping.
+    return {project,branch:env.branch,label:`QLTC ${env.label}`};
+  }
+  return {project,branch:project.branch,label:project.shortName};
+}
+function syncBuildEnvironment():void{
+  el<HTMLElement>('build-env-group').hidden=el<HTMLSelectElement>('build-project').value!=='qltc';
+  el<HTMLButtonElement>('refresh-builds').disabled=!buildTarget();
+  el<HTMLElement>('build-results').replaceChildren();
+  const target=buildTarget();
+  el<HTMLElement>('build-summary').textContent=target?`Chọn “Kiểm tra build” để đối chiếu GitHub HEAD trực tiếp cho ${target.label}.`:
+    'QLTC DEV BACKUP: chưa có HEAD riêng đã xác minh. Không được lấy nhánh DEV hoặc PROD thay thế. Chỉ mở Hosting để kiểm tra thủ công.';
+}
+async function githubRead<T>(url:string):Promise<T>{
+  const response=await fetch(url,{headers:{Accept:'application/vnd.github+json'},cache:'no-store'});
+  if(!response.ok){
+    if(response.status===403||response.status===429)throw new Error('GitHub giới hạn lượt API hoặc cần đăng nhập. Hãy thử lại sau, hoặc mở GitHub Actions.');
+    throw new Error(`GitHub API HTTP ${response.status}`);
+  }
+  return await response.json() as T;
+}
+async function verifyBuildHead(target:BuildTarget):Promise<string>{
+  const path=target.branch.split('/').map(encodeURIComponent).join('/');
+  const expected=`refs/heads/${target.branch}`;
+  const response=await githubRead<{ref?:string;object?:{sha?:string}}>(`https://api.github.com/repos/${target.project.repo}/git/ref/heads/${path}`);
+  if(response.ref!==expected||!validSha(response.object?.sha))throw new Error('HEAD GitHub không được xác minh — đã dừng để tránh nhận sai artifact.');
+  return response.object.sha;
+}
+function buildLink(href:string,label:string):HTMLAnchorElement{
+  const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener noreferrer';a.textContent=label;return a;
+}
+function prettyBytes(n:number):string{
+  if(!Number.isFinite(n)||n<0)return 'Không rõ dung lượng';
+  return n>=1048576?`${(n/1048576).toFixed(1)} MB`:`${Math.ceil(n/1024)} KB`;
+}
+async function fetchRunArtifacts(target:BuildTarget,sha:string,run:WorkflowRun,container:HTMLElement):Promise<void>{
+  container.replaceChildren();
+  const progress=document.createElement('p');progress.className='hint';progress.textContent='Đang tìm artifact của workflow…';container.append(progress);
+  try{
+    const data=await githubRead<{artifacts?:unknown[]}>(`https://api.github.com/repos/${target.project.repo}/actions/runs/${run.id}/artifacts?per_page=100`);
+    if(!Array.isArray(data.artifacts))throw new Error('Dữ liệu artifact không hợp lệ');
+    // Do not trust arbitrary archive_download_url; GitHub artifact download may need GitHub login.
+    const safe=data.artifacts.filter((x):x is GithubArtifact=>{
+      if(!x||typeof x!=='object')return false;const a=x as Partial<GithubArtifact>;
+      return Number.isSafeInteger(a.id)&&Number(a.id)>0&&typeof a.name==='string'&&a.name.length<=220&&
+        typeof a.expired==='boolean'&&Number.isFinite(a.size_in_bytes)&&
+        a.workflow_run?.id===run.id&&a.workflow_run?.head_sha===sha;
+    });
+    container.replaceChildren();
+    if(data.artifacts.length>safe.length){const warning=document.createElement('p');warning.className='status-note warning';warning.textContent='Một số artifact không đủ bằng chứng khớp SHA/run và đã bị loại.';container.append(warning);}
+    if(!safe.length){const none=document.createElement('p');none.className='hint';none.textContent='Không có artifact hợp lệ cho workflow này (hoặc API thiếu thông tin xác minh).';container.append(none);return;}
+    for(const a of safe){
+      const row=document.createElement('div');row.className='artifact-item';
+      const title=document.createElement('strong');title.textContent=a.name;
+      const info=document.createElement('span');info.textContent=`${prettyBytes(a.size_in_bytes)} · ${a.expired?'ĐÃ HẾT HẠN':'Còn trên GitHub'}${a.expires_at?' · Hạn '+new Date(a.expires_at).toLocaleDateString('vi-VN'):''}`;
+      row.append(title,info);
+      if(!a.expired){row.append(buildLink(run.html_url,'Mở Actions để tải ZIP ↗'));}
+      container.append(row);
+    }
+  }catch(error){container.replaceChildren();const p=document.createElement('p');p.className='status-note warning';p.textContent=error instanceof Error?error.message:'Không thể đọc artifact';container.append(p);}
+}
+async function refreshBuilds():Promise<void>{
+  const btn=el<HTMLButtonElement>('refresh-builds'),list=el<HTMLElement>('build-results'),summary=el<HTMLElement>('build-summary');
+  const target=buildTarget();if(!target)return;
+  btn.disabled=true;btn.textContent='Đang đọc HEAD và Actions…';list.replaceChildren();summary.textContent='Chỉ sử dụng dữ liệu GitHub trả về trong lần kiểm tra này.';
+  try{
+    const sha=await verifyBuildHead(target);
+    const data=await githubRead<{workflow_runs?:unknown[]}>(`https://api.github.com/repos/${target.project.repo}/actions/runs?branch=${encodeURIComponent(target.branch)}&head_sha=${sha}&per_page=100`);
+    if(!Array.isArray(data.workflow_runs))throw new Error('Dữ liệu workflow runs không hợp lệ');
+    const all=data.workflow_runs.filter((x):x is WorkflowRun=>validRun(x,target.project.repo,sha));
+    // Backend may return unrelated runs or a partial page; never elevate a missing match to PASS.
+    summary.textContent=`${target.label} · ${target.branch} · HEAD ${sha} · ${all.length} workflow khớp chính xác SHA (tối đa 100 kết quả). Không phải Runtime Golden.`;
+    if(!all.length){const note=document.createElement('p');note.className='status-note warning';note.textContent='Không tìm thấy workflow trùng HEAD trong trang kết quả. Không kết luận đã build thành công.';list.append(note);return;}
+    for(const run of all.slice(0,12)){
+      const card=document.createElement('article');card.className='build-run';
+      const title=document.createElement('div');title.className='build-run-head';title.append(buildLink(run.html_url,run.name));
+      const state=document.createElement('span');const stateData=ciStatus(run);state.className=`ci-pill ${stateData.css}`;state.textContent=stateData.text;title.append(state);
+      const details=document.createElement('p');details.className='hint';details.textContent=`Workflow #${run.id} · SHA ${sha.slice(0,12)} · ${run.created_at?new Date(run.created_at).toLocaleString('vi-VN'):'Không rõ ngày'}`;
+      const actions=document.createElement('div');actions.className='build-actions';
+      const load=document.createElement('button');load.className='secondary-button';load.type='button';load.textContent='Xem bộ cài / artifact';
+      const artifacts=document.createElement('div');artifacts.className='artifacts-list';
+      load.addEventListener('click',()=>void fetchRunArtifacts(target,sha,run,artifacts));
+      actions.append(load,buildLink(run.html_url,'Xem workflow GitHub ↗'));
+      card.append(title,details,actions,artifacts);list.append(card);
+    }
+    if(all.length>12){const note=document.createElement('p');note.className='hint';note.textContent=`Đang hiển thị 12/${all.length} workflow. Mở GitHub Actions để xem toàn bộ.`;list.append(note);}
+  }catch(error){summary.textContent=error instanceof Error?error.message:'Không thể kiểm tra GitHub';const fail=document.createElement('p');fail.className='status-note warning';fail.textContent='Không có kết luận CI hoặc artifact khi không xác minh được HEAD.';list.append(fail);}
+  finally{btn.disabled=!buildTarget();btn.textContent='↻ Kiểm tra build theo HEAD';}
+}
+async function refreshIssues():Promise<void>{
+  const btn=el<HTMLButtonElement>('refresh-issues'),list=el<HTMLElement>('issues-results'),summary=el<HTMLElement>('issues-summary');
+  const project=projects.find(x=>x.id===el<HTMLSelectElement>('issues-project').value);if(!project)return;
+  btn.disabled=true;btn.textContent='Đang đọc GitHub…';list.replaceChildren();
+  const repo=project.repo,state=el<HTMLSelectElement>('issues-state').value;
+  el<HTMLAnchorElement>('open-issues-github').href=`https://github.com/${repo}/issues`;
+  try{
+    const data=await githubRead<unknown>(`https://api.github.com/repos/${repo}/issues?state=${state}&per_page=60&sort=updated&direction=desc`);
+    if(!Array.isArray(data))throw new Error('Danh sách Issues không hợp lệ');
+    const entries=(data as unknown[]).filter((x):x is GithubIssue=>{
+      if(!x||typeof x!=='object')return false;const issue=x as Partial<GithubIssue>;
+      return !issue.pull_request&&Number.isSafeInteger(issue.number)&&Number(issue.number)>0&&
+       typeof issue.title==='string'&&typeof issue.html_url==='string'&&
+       issue.html_url===`https://github.com/${repo}/issues/${issue.number}`;
+    }).slice(0,40);
+    summary.textContent=`${project.shortName} · repository ${repo} · ${entries.length} Issues đọc được (tối đa 60 mục/trang). ${project.id==='hcf'||project.id==='hce'?'HCF và HCE dùng chung repository, Issues chưa được phân loại tự động.':''}`;
+    for(const issue of entries){
+      const row=document.createElement('article');row.className='issue-row';
+      const title=buildLink(issue.html_url,`#${issue.number} · ${issue.title}`);
+      const meta=document.createElement('p');meta.className='hint';const labels=Array.isArray(issue.labels)?issue.labels.map(x=>x.name).filter(x=>typeof x==='string').slice(0,4).join(', '):'';
+      meta.textContent=`${issue.state==='open'?'ĐANG MỞ':'ĐÃ ĐÓNG'} · cập nhật ${issue.updated_at?new Date(issue.updated_at).toLocaleString('vi-VN'):'chưa rõ'}${labels?' · '+labels:''}`;
+      row.append(title,meta);list.append(row);
+    }
+    if(!entries.length){const note=document.createElement('p');note.className='hint';note.textContent='Chưa tìm được Issue theo bộ lọc này. Công việc lưu trên máy không tự trở thành GitHub Issue.';list.append(note);}
+  }catch(err){summary.textContent=err instanceof Error?err.message:'Lỗi kết nối GitHub';}
+  finally{btn.disabled=false;btn.textContent='↻ Đọc Issues từ GitHub';}
+}
+function wireRealGithubModules():void{
+  el<HTMLSelectElement>('build-project').addEventListener('change',syncBuildEnvironment);
+  el<HTMLSelectElement>('build-environment').addEventListener('change',syncBuildEnvironment);
+  el<HTMLButtonElement>('refresh-builds').addEventListener('click',()=>void refreshBuilds());
+  el<HTMLSelectElement>('issues-project').addEventListener('change',()=>{
+    const project=projects.find(x=>x.id===el<HTMLSelectElement>('issues-project').value)||projects[0];
+    el<HTMLAnchorElement>('open-issues-github').href=`https://github.com/${project.repo}/issues`;
+    el<HTMLElement>('issues-results').replaceChildren();
+    el<HTMLElement>('issues-summary').textContent='Chọn “Đọc Issues” để lấy dữ liệu thật.';
+  });
+  el<HTMLButtonElement>('refresh-issues').addEventListener('click',()=>void refreshIssues());
+  syncBuildEnvironment();
+}
 function changePreviewMode(mode:string):void {
   const stage=document.querySelector<HTMLElement>('.preview-stage');if(!stage)return;
   el<HTMLElement>('web-preview-controls').hidden=mode!=='web';el<HTMLElement>('image-preview-controls').hidden=mode!=='images';
@@ -319,6 +467,7 @@ function main(): void {
   el<HTMLElement>('current-date').textContent = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' });
   const holder = el<HTMLElement>('projects'); projects.forEach(p => holder.append(projectCard(p)));
   renderQltcEnvironments();
+  wireRealGithubModules();
   el<HTMLSelectElement>('task-project').addEventListener('change',setTaskEnvironmentVisibility);setTaskEnvironmentVisibility();
   document.querySelectorAll<HTMLButtonElement>('[data-page]').forEach(btn => btn.addEventListener('click', () => navigate(btn.dataset.page as PageId)));
   document.querySelectorAll<HTMLButtonElement>('[data-select-project]').forEach(btn => btn.addEventListener('click', () => { el<HTMLSelectElement>('task-project').value = btn.dataset.selectProject ?? 'qltc'; navigate('tasks'); }));

@@ -1,32 +1,26 @@
-# HNL Dev v0.3.3 — bảng quản lý phát triển (Web staging)
+# HNL Dev v0.4.0 — Trung tâm GitHub thực tế (DEV Candidate)
 
-HNL Dev Center là một **Web/PWA quản lý quá trình phát triển** HNL QLTC, HCF và HCE. Đây là công cụ làm việc riêng biệt, **không thay đổi** ba ứng dụng hiện có. Bản v0.3.3 đang ở nhánh DEV của repo công khai; Web staging được triển khai độc lập. Không có backend, xác thực người quản trị hay đồng bộ dữ liệu nhiều thiết bị.
+Bản phát triển tiếp theo từ **HNL Dev v0.3.3**; không sửa source hay dữ liệu HNL QLTC/HCF/HCE. Ứng dụng Web/PWA tĩnh, repository Public `lengochieu1211-sudo/hnl-dev-center`, nhánh chuẩn đang chạy `dev` HEAD cơ sở `de529cf5ba0818b82ea3e6ae9c718fd38bacdffe` (xác minh ngày 27/10/2026). **v0.4.0 mới được build/test cục bộ; chưa Push/Deploy.** URL https://hnldev.vercel.app/ hiện không được coi là đã chạy v0.4.0.
 
-## Tính năng chạy được
+## Có ích trực tiếp (v0.4.0)
 
-- Tổng quan 3 ứng dụng / 2 repository; QLTC hiển thị ba môi trường PROD, DEV, DEV BACKUP riêng biệt (PROD chỉ đọc; DEV BACKUP là Hosting site không giả định cùng HEAD DEV); đọc **exact HEAD** từng nhánh qua GitHub REST `GET /git/ref/heads/...`, không cần GitHub token. Tránh lỗi bỏ sót nhánh khi repository có trên 100 nhánh.
-- Trang GitHub Actions/CI: đọc workflow runs theo từng nhánh; chỉ hiển thị run trùng **exact HEAD mới đọc lại**; không coi CI PASS là Runtime Golden/CERTIFIED.
-- Hồ sơ công việc: tạo, lưu trên trình duyệt (`localStorage`), lấy lại, lọc dự án, đổi trạng thái thủ công, xác nhận khi xóa. Các nhãn trạng thái **do người dùng tự ghi nhận**, không phải GitHub/CI tự xác minh.
-- Handoff (bàn giao) sang ChatGPT/Claude/Gemini bằng nút sao chép + mở trang; Antigravity nhận nội dung dán trong ứng dụng PC. Không tích hợp API AI và không tự đồng bộ cuộc chat.
-- Xuất backup JSON kèm SHA256 ngay trên giao diện, nhập/gộp bản ghi bằng ID và thời gian cập nhật; bảo vệ dữ liệu cục bộ nếu import lỗi hoặc bộ nhớ trình duyệt lỗi. JSON **không phải** FULL SOURCE/PATCH, không tự tải lên Google Drive.
-- Preview Studio: mô phỏng PC/laptop/iPad/iPhone/Android; sandbox iframe đối với URL HTTPS trong các domain `*.web.app`, `*.firebaseapp.com`, `*.vercel.app`; ảnh trước/sau từ file PNG/JPG/WebP trên thiết bị. Iframe có thể bị chặn bởi web đích và không đại diện runtime EXE/APK/AutoCAD.
-- PWA (cài shortcut/app shell) có manifest, icons PNG, service worker lưu cache **chỉ tài nguyên tĩnh** để có thể mở UI khi mất mạng sau lần tải thành công. Không cache API GitHub hoặc nội dung người dùng lên server.
-- `.github/workflows/ci.yml` chỉ kiểm tra typecheck/lint/tests/build, không chứa Push, Deploy hoặc lệnh sử dụng secret.
+- **Bộ cài / Artifacts:** chọn QLTC (PROD/DEV; DEV BACKUP bị khóa vì chưa xác minh HEAD), HCF hoặc HCE, bấm **Kiểm tra build theo HEAD**. Web đọc đúng GitHub branch SHA hiện tại và lọc workflow runs theo SHA, không dùng mã baseline để kết luận. Bấm **Xem bộ cài / artifact** cho từng workflow để xem tên, kích thước, thời hạn lưu, link tới đúng GitHub Actions run để đăng nhập tải ZIP. Nếu không có artifact hoặc API lỗi phải báo rõ; không tạo link tải giả. EXE/APK bên trong ZIP do workflow đóng gói, phải kiểm chứng và kiểm tra thiết bị thật riêng.
+- **GitHub Issues:** đọc những vấn đề thực sự nằm trên repository QLTC/CAD, xem trạng thái/cập nhật, mở Issue trên GitHub. Loại trừ Pull Requests; HCF/HCE chia sẻ repository CAD nên không tự nhận phân loại issue.
+- **CI hiện tại** vẫn giữ chức năng đọc workflow và đối chiếu HEAD, nhưng không coi thành công CI là Runtime Golden hay CERTIFIED.
+- **QLTC 3 môi trường:** PROD (GitHub main; khóa thao tác sửa/nhúng), DEV (GitHub dev), DEV BACKUP (Hosting dự phòng không giả định chung HEAD); không thay Firebase/R2/Hosting nào.
+- Giữ nguyên hồ sơ công việc cục bộ (`localStorage`), xuất/nhập JSON và Preview; không tự đồng bộ sang ChatGPT/Claude/Gemini, không dùng API AI; không kết nối nguồn dữ liệu công trình.
 
-## Cách chạy trên PC Windows
+## Cách sử dụng trên PC
 
-**Cách dễ nhất (không cần TypeScript):**
+1. Giải nén FULL SOURCE ZIP v0.4.0, nhấp đúp `START-WINDOWS.bat` (cần Node.js 22; TypeScript 5.9.3 nếu muốn build lại).
+2. Mở `http://127.0.0.1:4173` nếu trình duyệt chưa tự mở.
+3. Chọn **Bộ cài / Artifacts**, hoặc **GitHub Issues**. Cần có mạng để lấy dữ liệu GitHub mới nhất; API công khai có hạn mức; tải artifact có thể yêu cầu đăng nhập GitHub.
 
-1. Tải FULL SOURCE ZIP 0.3.0, chọn **Extract All** để giải nén.
-2. Cài **Node.js 22** nếu máy chưa cài.
-3. Vào thư mục `hnl-dev-center-v0.3.3`, nhấp đúp `START-WINDOWS.bat`.
-4. Mở `http://127.0.0.1:4173` nếu trình duyệt chưa mở.
-
-**Kiểm tra và build lại từ source:**
+Build và gate từ đúng source:
 
 ```powershell
-npm install --global typescript@5.9.3
-npm ci --ignore-scripts
+npm ci --ignore-scripts --no-audit --no-fund
+npm run audit:public
 npm run typecheck
 npm run lint
 npm test
@@ -34,63 +28,30 @@ npm run build
 npm start
 ```
 
-`npm ci` không tải thư viện runtime: bản này không có dependency npm. TypeScript 5.9.3 được cài riêng ở thời điểm build và workflow CI sử dụng phiên bản đã khóa.
+Nếu `tsc` chưa được cài toàn cục: `npm install --global typescript@5.9.3 --ignore-scripts --no-audit --no-fund` (giai đoạn build; không có dependency runtime).
 
-## Sử dụng trên điện thoại, tablet và iPhone
+Kiểm thử UI Chromium cục bộ khi có Python Playwright + Chromium:
 
-- Có thể dùng local tại `localhost` hoặc mở Web staging tại `https://hnldev.vercel.app` nếu bản đã được triển khai; giao diện là bản theo HEAD của HNL Dev được công bố.
-- Đã có repository riêng `lengochieu1211-sudo/hnl-dev-center`. Web tĩnh Vercel phải được kiểm tra lại sau mỗi bản phát hành; chỉ nhánh HNL Dev `dev` được phép chỉnh trước, không tự triển khai PROD QLTC.
-- Sau khi có HTTPS, có thể mở trên Safari/Chrome rồi thêm ra màn hình chính; lưu ý dữ liệu hồ sơ **vẫn độc lập theo trình duyệt/thiết bị** cho đến khi xây xác thực và backend đồng bộ an toàn.
-- Khi đổi máy hoặc muốn sao lưu: vào **Sao lưu hồ sơ → Tải backup JSON**, lưu Google Drive thủ công; trên thiết bị mới chọn **Nhập JSON**.
+```bash
+python tests/browser-smoke.py
+python tests/qltc-environments-browser.py
+python tests/github-live-browser.py
+```
 
-## Nguồn GitHub tham chiếu ngày 27/10/2026
+Các bài test browser trên **giả lập phản hồi GitHub** để xác minh UI, bảo mật link và rủi ro sai SHA. Chúng không xác nhận đăng nhập GitHub/khả năng tải trên điện thoại thật.
 
-| Ứng dụng | Repo | Branch | HEAD đã kiểm tra |
-|---|---|---|---|
-| QLTC | `lengochieu1211-sudo/hnl-qltc` | `dev` | `d6effaf03a08a9879fa172a345992922916036d2` |
-| HCF | `lengochieu1211-sudo/hnl-cad-ai` | `research/vxt-pro-v7-bootstrap` | `83582296127306d846571010a43eb8e94edbedd1` |
-| HCE | `lengochieu1211-sudo/hnl-cad-ai` | `research/hce-pro-bootstrap` | `a45fe6dcf9fca2172fed3a93ac14e6cf4f4f8ae8` |
+## Hạn chế và bảo vệ dữ liệu
 
-Đây chỉ là mốc tại thời điểm kiểm tra. Phải **Cập nhật GitHub** lại để xác minh HEAD mới trước khi sửa thật.
+- `github.com` có thể yêu cầu người dùng đăng nhập để tải artifact. HNL Dev không giữ hoặc yêu cầu token. Giấy phép/đăng nhập ChatGPT Plus không cấp quyền tải GitHub artifact.
+- Không lấy bản build cũ làm bản mới, không lấy HEAD `dev` để khẳng định DEV BACKUP đang chạy, không so sánh CI với PROD runtime.
+- HNL Dev Public chỉ đọc thông tin repository công khai; không tạo/sửa GitHub Issues tự động, không chạy agent OpenCode trên máy chủ, không lưu Drive tự động trong trình duyệt, không chạy AutoCAD/EXE/APK bên trong Web.
+- Hồ sơ công việc cá nhân lưu từng trình duyệt, có thể mất nếu xóa dữ liệu trình duyệt: cần xuất JSON định kỳ.
+- CI chỉ chạy typecheck, lint tĩnh (không phải ESLint toàn bộ), unit test và build; không tự động Push/Deploy. Không có secret, Firebase config, R2 token hay khóa truy cập trong source.
+- Không được gọi `CERTIFIED` trước khi HEAD trên GitHub được kiểm tra CI, Runtime Golden thiết bị thật và Drive backup xác thực.
 
-## Kiểm thử và giới hạn
+## Tham chiếu / triển khai
 
-- `npm run typecheck` dùng `tsc --noEmit`.
-- `npm run lint` là lint bảo mật/tập tin **tự viết**, không phải ESLint đầy đủ.
-- `npm test` kiểm tra 3 ràng buộc tĩnh về API/secret, nhánh và an toàn.
-- `python tests/browser-smoke.py` cần Python Playwright và Chromium; trong môi trường tạo bản, trình duyệt chặn tất cả navigation. Kiểm thử đã dùng `set_content`, giả lập phản hồi GitHub và kiểm tra thao tác ở 1440x900, 820x1180, 390x844. Đây là **UI component smoke** (kiểm tra tương tác giao diện), **không phải kiểm thử kết nối mạng/Runtime Golden thực tế**.
-- Chưa có đăng nhập quản trị, phân quyền, bảo vệ công việc khi nhiều người dùng cùng chỉnh, backend, đồng bộ đa thiết bị, API AI, GitHub write, Google Drive tự lưu, kiểm thử thiết bị thật hoặc EXE/APK/AutoCAD.
-- Giữ trạng thái **DEV CANDIDATE / CHƯA CERTIFIED**.
-
-## Bảo vệ dữ liệu / điều hành
-
-- Không lưu API keys, không yêu cầu GitHub secrets, không có endpoint hoặc quyền ghi Firebase/Cloudflare R2.
-- Không Push GitHub, không Merge, không Deploy Vercel/Firebase. Không can thiệp QLTC, HCF, HCE.
-- Không nhập password, token, thông tin cá nhân/công trình nhạy cảm vào hồ sơ cục bộ. `localStorage` có thể bị xóa khi dọn dữ liệu trình duyệt; xuất backup JSON định kỳ.
-- Khi có lỗi localStorage, hệ thống khóa ghi để không vô tình ghi đè dữ liệu cũ.
-
-## Hướng hoàn thiện tiếp theo
-
-1. Tạo **repository HNL Dev Center riêng** (chỉ khi người dùng cho phép), dùng `main` cho mã Dev Center và nhánh `dev` cho cập nhật tiếp theo. Không đụng hai repository ứng dụng.
-2. Chạy GitHub Actions trên repo mới, xác minh all PASS đúng HEAD.
-3. Triển khai **Vercel Preview/DEV** trước, không nhầm với PROD QLTC. Test Safari iOS, Chrome Android, màn hình tablet và PWA/offline thực tế.
-4. Nếu cần hồ sơ đồng bộ đa thiết bị/thành viên: thiết kế tài khoản + backend, ACL (phân quyền), sao lưu có xác nhận, Audit log, encryption và regression riêng trước khi bật.
-5. Thiết kế connector theo quyền tối thiểu để lấy artifacts/Drive backup, nhưng **không tự động Push/Deploy**.
-
-
-## Điểm mới v0.3.3 – chuẩn bị repository Public
-
-- Khóa service worker (PWA) chỉ cache tài nguyên tĩnh đã liệt kê; không cache URL chứa query hoặc endpoint mới.
-- Bổ sung `.gitignore` và `npm run audit:public` để rà file có dấu hiệu nhạy cảm trước khi phát hành.
-- Bổ sung 2 bài kiểm thử, khóa GitHub Actions `checkout` / `setup-node` theo SHA bất biến.
-- Bỏ URL PROD QLTC khỏi liên kết Preview mặc định: chỉ hiện nút mở trang khi đã nhập URL hợp lệ.
-- Hướng dẫn tạo repository riêng ở `PUBLIC-REPOSITORY-HANDOFF.md`. Repository phải Public, không dùng repo QLTC/HCF/HCE.
-- Đã kiểm tra build cục bộ; **chưa tạo GitHub repository, chưa chạy CI trên repo mới và chưa triển khai Vercel**.
-
-## QLTC: xác minh tách môi trường (2026-10-27)
-- PROD: nhánh `main`, Firebase project `com-example-qlct-61329`, Hosting site `hnlqltc`. Không nhúng PROD hoặc sửa dữ liệu.
-- DEV: nhánh `dev`, Firebase project `hnl-qltc-dev`, Hosting site `hnl-qltc-dev`.
-- DEV BACKUP: Hosting site `hnl-qltc-dev-backup`; không phải một nhánh Git riêng được xác minh. Exact HEAD bản triển khai và Firebase project của site backup cần đọc lại từ checkpoint hoặc Hosting.
-- Kiểm tra HTTP từ trình duyệt ngoài ghi nhận PROD mở được, DEV bị lỗi 509 và DEV BACKUP 404 tại thời điểm kiểm tra. Không coi đây là chứng nhận runtime hoặc sự cố kết luận vĩnh viễn.
-- Preview trên HNL Dev cho phép chọn đúng môi trường; PROD chỉ mở tab ngoài; DEV/DEV BACKUP có thể xem ở tab ngoài và thử nhúng giới hạn.
-- Backup JSON công việc thêm trường tùy chọn `environment`, vẫn giữ schemaVersion=1 và tương thích các bản ghi cũ thiếu trường này.
+- Repository: https://github.com/lengochieu1211-sudo/hnl-dev-center — dùng nhánh DEV trước, nhánh main giữ nguyên.
+- Web staging hiện tại: https://hnldev.vercel.app/ — **vẫn là bản v0.3.3** cho tới khi cập nhật có phê duyệt.
+- Drive backup HNL Dev: https://drive.google.com/drive/folders/15Cn3ZyfbVuIk-Xav9sTKppsiclq_z6os
+- Tài liệu GitHub API: https://docs.github.com/en/rest/actions/artifacts và https://docs.github.com/en/rest/issues/issues
